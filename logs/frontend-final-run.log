@@ -1,0 +1,26 @@
+nohup: ignoring input
+
+> detection-platform-frontend@1.0.0 dev
+> vite --port 3000 --host 0.0.0.0
+
+
+  VITE v4.5.5  ready in 557 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://103.246.244.229:3000/
+  ➜  Network: http://172.18.0.1:3000/
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+[Proxy Request] POST /api/user/login -> /api/user/login
+[Proxy Response] 401 /api/user/login
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+8:59:42 AM [vite] vite.config.js changed, restarting server...
+Port 3000 is in use, trying another one...
+8:59:43 AM [vite] server restarted.
+
+  ➜  Local:   http://localhost:3001/
+  ➜  Network: http://103.246.244.229:3001/
+  ➜  Network: http://172.18.0.1:3001/

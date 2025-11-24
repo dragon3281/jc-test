@@ -1,0 +1,50 @@
+========================================
+登录流程测试
+时间: 2025-11-13 09:13:24
+========================================
+
+测试1: 前端访问测试
+----------------------------------------
+GET http://103.246.244.229:3000
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Content-Type: text/html
+Cache-Control: no-cache
+Etag: W/"19a-elpDkAGlYuIFx18NmjG26iLeMOw"
+Date: Thu, 13 Nov 2025 09:13:24 GMT
+Connection: keep-alive
+
+测试2: 直接调用后端登录API
+----------------------------------------
+POST http://103.246.244.229:8080/user/login
+HTTP状态码: 200
+响应体: {"code":200,"message":"操作成功","data":{"token":"eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwidXNlcklkIjoxLCJpYXQiOjE3NjMwMjUyMDUsImV4cCI6MTc2MzExMTYwNX0.eY_UkfBo351mLWkdL1J00kESJ3nWYrwTdKq7t2ypbTU","user":{"id":1,"username":"admin","nickname":"系统管理员","avatar":null,"email":null,"phone":null,"status":1,"createTime":"2025-11-13T03:17:28","lastLoginTime":"2025-11-13T09:09:51"}},"timestamp":1763025205123}
+✓ 后端登录API正常
+✓ 获得Token: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwid...
+
+测试3: 通过前端代理调用登录API
+----------------------------------------
+POST http://103.246.244.229:3000/api/user/login
+HTTP状态码: 200
+响应体: {"code":200,"message":"操作成功","data":{"token":"eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwidXNlcklkIjoxLCJpYXQiOjE3NjMwMjUyMDUsImV4cCI6MTc2MzExMTYwNX0.eY_UkfBo351mLWkdL1J00kESJ3nWYrwTdKq7t2ypbTU","user":{"id":1,"username":"admin","nickname":"系统管理员","avatar":null,"email":null,"phone":null,"status":1,"createTime":"2025-11-13T03:17:28","lastLoginTime":"2025-11-13T09:13:25"}},"timestamp":1763025205492}
+✓ 前端代理登录API正常
+✓ 获得Token: eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwid...
+
+测试4: 使用Token访问需要认证的接口
+----------------------------------------
+GET http://103.246.244.229:8080/user/info (with token)
+HTTP状态码: 401
+响应体: {"code":401,"message":"未授权或登录已过期"}
+✗ Token验证失败 (401)
+
+测试5: 检查Vite代理日志
+----------------------------------------
+最近的代理日志:
+无代理相关日志
+
+========================================
+测试完成
+========================================

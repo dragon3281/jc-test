@@ -1,0 +1,103 @@
+nohup: ignoring input
+
+> detection-platform-frontend@1.0.0 dev
+> vite --port 3000 --host 0.0.0.0 --strictPort
+
+
+  VITE v4.5.5  ready in 715 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://103.246.244.229:3000/
+  ➜  Network: http://172.18.0.1:3000/
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+[Proxy Request] GET /api/data/base/page?current=1&size=20 -> /api/data/base/page?current=1&size=20
+[Proxy Response] 401 /api/data/base/page?current=1&size=20
+[Proxy Request] GET /api/data/result/page?current=1&size=20 -> /api/data/result/page?current=1&size=20
+[Proxy Response] 401 /api/data/result/page?current=1&size=20
+[Proxy Request] GET /api/data/result/page?current=1&size=20 -> /api/data/result/page?current=1&size=20
+[Proxy Response] 401 /api/data/result/page?current=1&size=20
+[Proxy Request] GET /api/business/analysis/list?websiteUrl=&pageNum=1&pageSize=10 -> /api/business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Response] 401 /api/business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Request] GET /api/proxy/pool/list -> /api/proxy/pool/list
+[Proxy Response] 401 /api/proxy/pool/list
+[Proxy Request] GET /api/business/register/list?taskName=&pageNum=1&pageSize=10 -> /api/business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /api/business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /api/proxy/pool/list -> /api/proxy/pool/list
+[Proxy Response] 401 /api/proxy/pool/list
+[Proxy Request] GET /api/template/page?current=1&size=20 -> /api/template/page?current=1&size=20
+[Proxy Response] 401 /api/template/page?current=1&size=20
+[Proxy Request] GET /api/proxy/pool/list -> /api/proxy/pool/list
+[Proxy Response] 401 /api/proxy/pool/list
+[Proxy Request] GET /api/business/register/list?taskName=&pageNum=1&pageSize=10 -> /api/business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /api/business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /api/template/page?current=1&size=20 -> /api/template/page?current=1&size=20
+[Proxy Response] 401 /api/template/page?current=1&size=20
+[Proxy Request] GET /api/data/base/page?current=1&size=20 -> /api/data/base/page?current=1&size=20
+[Proxy Response] 401 /api/data/base/page?current=1&size=20
+9:20:41 AM [vite] hmr update /src/views/data/Base.vue
+[Proxy Request] GET /data/base/page?current=1&size=20 -> /data/base/page?current=1&size=20
+[Proxy Response] 401 /data/base/page?current=1&size=20
+9:20:49 AM [vite] hmr update /src/views/data/History.vue
+9:20:56 AM [vite] hmr update /src/views/data/Latest.vue
+9:21:26 AM [vite] hmr update /src/views/business/Template.vue
+9:21:34 AM [vite] hmr update /src/views/business/Register.vue
+9:21:43 AM [vite] hmr update /src/views/business/Analysis.vue
+[Proxy Request] GET /data/base/page?current=1&size=20 -> /data/base/page?current=1&size=20
+[Proxy Response] 401 /data/base/page?current=1&size=20
+[Proxy Request] GET /data/result/page?current=1&size=20 -> /data/result/page?current=1&size=20
+[Proxy Response] 401 /data/result/page?current=1&size=20
+[Proxy Request] GET /data/result/page?current=1&size=20 -> /data/result/page?current=1&size=20
+[Proxy Response] 401 /data/result/page?current=1&size=20
+[Proxy Request] GET /data/base/page?current=1&size=20 -> /data/base/page?current=1&size=20
+[Proxy Response] 401 /data/base/page?current=1&size=20
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 401 /proxy/pool/list
+[Proxy Request] GET /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10 -> /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 401 /proxy/pool/list
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 401 /business/register/list?taskName=&pageNum=1&pageSize=10

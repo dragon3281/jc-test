@@ -1,0 +1,110 @@
+========================================
+登录测试日志
+时间: 2025-11-13 08:41:14
+========================================
+
+1. 测试后端直接访问 (8080端口)
+----------------------------------------
+请求: POST http://127.0.0.1:8080/user/login
+* About to connect() to 127.0.0.1 port 8080 (#0)
+*   Trying 127.0.0.1...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Connected to 127.0.0.1 (127.0.0.1) port 8080 (#0)
+> POST /user/login HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: 127.0.0.1:8080
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 42
+> 
+} [data not shown]
+* upload completely sent off: 42 out of 42 bytes
+< HTTP/1.1 200 
+< Vary: Origin
+< Vary: Access-Control-Request-Method
+< Vary: Access-Control-Request-Headers
+< X-Content-Type-Options: nosniff
+< X-XSS-Protection: 0
+< Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+< Pragma: no-cache
+< Expires: 0
+< X-Frame-Options: DENY
+< Content-Type: application/json
+< Transfer-Encoding: chunked
+< Date: Thu, 13 Nov 2025 08:41:14 GMT
+< 
+{ [data not shown]
+100   465    0   423  100    42   3540    351 --:--:-- --:--:-- --:--:--  3554
+* Connection #0 to host 127.0.0.1 left intact
+{"code":200,"message":"操作成功","data":{"token":"eyJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwidXNlcklkIjoxLCJpYXQiOjE3NjMwMjMyNzQsImV4cCI6MTc2MzEwOTY3NH0.CgJW92B6Nu917waEi5g7u1sVmKn7Hy79MjVpXCjDOfU","user":{"id":1,"username":"admin","nickname":"系统管理员","avatar":null,"email":null,"phone":null,"status":1,"createTime":"2025-11-13T03:17:28","lastLoginTime":"2025-11-13T08:39:59"}},"timestamp":1763023274589}
+
+2. 测试前端代理访问 (3000端口 -> 8080)
+----------------------------------------
+请求: POST http://127.0.0.1:3000/api/user/login
+* About to connect() to 127.0.0.1 port 3000 (#0)
+*   Trying 127.0.0.1...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Connected to 127.0.0.1 (127.0.0.1) port 3000 (#0)
+> POST /api/user/login HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: 127.0.0.1:3000
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 42
+> 
+} [data not shown]
+* upload completely sent off: 42 out of 42 bytes
+< HTTP/1.1 500 Internal Server Error
+< Access-Control-Allow-Origin: *
+< content-length: 0
+< date: Thu, 13 Nov 2025 08:41:14 GMT
+< connection: close
+< 
+100    42    0     0  100    42      0   8430 --:--:-- --:--:-- --:--:-- 10500
+* Closing connection 0
+
+
+3. 查看后端日志中的登录记录
+----------------------------------------
+
+4. 检查Vite代理配置
+----------------------------------------
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
+
+export default defineConfig({
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1500
+  }
+})
+
+5. 端口监听状态
+----------------------------------------
+tcp        0      0 127.0.0.1:3000          0.0.0.0:*               LISTEN      21879/node          
+tcp6       0      0 :::8080                 :::*                    LISTEN      3832/java           
+
+========================================
+测试完成
+========================================

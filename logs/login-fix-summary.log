@@ -1,0 +1,118 @@
+========================================
+登录401问题修复总结
+时间: 2025-11-13 09:13
+========================================
+
+## 问题诊断
+
+### 原因分析
+前端Login.vue中使用了错误的API路径：
+- 错误: `request.post('/api/user/login', loginForm)`
+- 问题: request.js的baseURL已经是'/api'，导致实际请求变成'/api/api/user/login'
+- 后端: SecurityConfig配置的公开路径是'/user/login'，不是'/api/user/login'
+- 结果: 请求被JWT过滤器拦截，返回401未授权
+
+### 修复方案
+修改 `/root/jc-test/frontend/src/views/Login.vue` 第83行：
+```javascript
+// 修改前
+const res = await request.post('/api/user/login', loginForm)
+
+// 修改后
+const res = await request.post('/user/login', loginForm)
+```
+
+## 测试结果
+
+### ✅ 测试1: 后端登录API
+- 请求: POST http://103.246.244.229:8080/user/login
+- 状态码: 200
+- 响应: 成功返回token和用户信息
+- 结论: 后端API正常
+
+### ✅ 测试2: 前端代理登录API (修复后)
+- 请求: POST http://103.246.244.229:3000/api/user/login
+- 状态码: 200
+- 响应: 成功返回token和用户信息
+- 结论: 前端代理正常，登录功能已修复
+
+### ⚠️ 测试3: Token验证
+- 请求: GET http://103.246.244.229:8080/user/info
+- 状态码: 401
+- 原因: 该接口可能不存在，或需要不同的路径
+- 建议: 检查后端UserController中的接口定义
+
+## 配置确认
+
+### 前端配置 (vite.config.js)
+```javascript
+server: {
+  port: 3000,
+  host: '0.0.0.0',
+  proxy: {
+    '/api': {
+      target: 'http://103.246.244.229:8080',
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api/, '')
+    }
+  }
+}
+```
+
+### 后端配置 (SecurityConfig.java)
+```java
+.authorizeHttpRequests(auth -> auth
+  .requestMatchers("/user/login", "/user/test-password").permitAll()
+  .requestMatchers("/ws/**").permitAll()
+  .anyRequest().authenticated())
+```
+
+### 前端请求配置 (request.js)
+```javascript
+const request = axios.create({
+  baseURL: '/api',
+  timeout: 30000
+})
+```
+
+## 请求流程
+
+1. 前端调用: `request.post('/user/login', data)`
+2. 拼接baseURL: `/api` + `/user/login` = `/api/user/login`
+3. Vite代理: `/api/user/login` → rewrite → `/user/login`
+4. 后端接收: `POST http://103.246.244.229:8080/user/login`
+5. SecurityConfig: 匹配公开路径，跳过JWT验证
+6. 登录成功: 返回token
+
+## 服务状态
+
+### 前端
+- 端口: 3000
+- 地址: http://103.246.244.229:3000
+- 状态: ✅ 正常运行
+- 进程PID: 31248
+
+### 后端  
+- 端口: 8080
+- 地址: http://103.246.244.229:8080
+- 状态: ✅ 正常运行
+- 进程PID: 3832
+
+## 访问信息
+
+- **前端地址**: http://103.246.244.229:3000
+- **登录凭据**: admin / admin123
+- **登录功能**: ✅ 已修复，可以正常登录
+
+## 注意事项
+
+1. ✅ 前端端口保持3000不变
+2. ✅ 后端端口保持8080不变
+3. ✅ 使用服务器IP (103.246.244.229) 而非localhost
+4. ✅ 前端代理配置正确
+5. ✅ Security配置正确
+6. ✅ 登录路径修复完成
+
+========================================
+修复完成！
+========================================

@@ -1,0 +1,283 @@
+nohup: ignoring input
+
+> detection-platform-frontend@1.0.0 dev
+> vite --port 3000 --host 0.0.0.0
+
+
+  VITE v4.5.5  ready in 603 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: http://103.246.244.229:3000/
+  ➜  Network: http://172.18.0.1:3000/
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+[Proxy Request] GET /data/base/page?current=1&size=10 -> /data/base/page?current=1&size=10
+[Proxy Response] 200 /data/base/page?current=1&size=10
+[Proxy Request] GET /data/result/page?current=1&size=10 -> /data/result/page?current=1&size=10
+[Proxy Response] 200 /data/result/page?current=1&size=10
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 500 /data/result/statistics
+[Proxy Request] GET /data/result/page?current=1&size=10&latest=true -> /data/result/page?current=1&size=10&latest=true
+[Proxy Response] 200 /data/result/page?current=1&size=10&latest=true
+[Proxy Request] GET /task/page?current=1&size=10 -> /task/page?current=1&size=10
+[Proxy Response] 200 /task/page?current=1&size=10
+[Proxy Request] GET /task/page?current=1&size=10&status=COMPLETED -> /task/page?current=1&size=10&status=COMPLETED
+[Proxy Response] 500 /task/page?current=1&size=10&status=COMPLETED
+[Proxy Request] GET /template/list -> /template/list
+[Proxy Response] 500 /template/list
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 500 /proxy/pool/list
+[Proxy Request] GET /server/list -> /server/list
+[Proxy Response] 200 /server/list
+[Proxy Request] GET /template/page?current=1&size=10 -> /template/page?current=1&size=10
+[Proxy Response] 200 /template/page?current=1&size=10
+[Proxy Request] GET /business/register/list -> /business/register/list
+[Proxy Response] 200 /business/register/list
+[Proxy Request] GET /business/analysis/list -> /business/analysis/list
+[Proxy Response] 200 /business/analysis/list
+[Proxy Request] GET /proxy/pool/page?current=1&size=10 -> /proxy/pool/page?current=1&size=10
+[Proxy Response] 200 /proxy/pool/page?current=1&size=10
+[Proxy Request] GET /server/page?current=1&size=10 -> /server/page?current=1&size=10
+[Proxy Response] 200 /server/page?current=1&size=10
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+DEPRECATION WARNING [legacy-js-api]: The legacy JS API is deprecated and will be removed in Dart Sass 2.0.0.
+
+More info: https://sass-lang.com/d/legacy-js-api
+
+[Proxy Request] GET /data/base/page?current=1&size=20 -> /data/base/page?current=1&size=20
+[Proxy Response] 200 /data/base/page?current=1&size=20
+[Proxy Request] GET /data/result/page?current=1&size=20 -> /data/result/page?current=1&size=20
+[Proxy Response] 200 /data/result/page?current=1&size=20
+[Proxy Request] GET /data/result/page?current=1&size=20 -> /data/result/page?current=1&size=20
+[Proxy Response] 200 /data/result/page?current=1&size=20
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 500 /data/result/statistics
+[Proxy Request] GET /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10 -> /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 200 /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Response] 500 /proxy/pool/list
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 500 /proxy/pool/list
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 200 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /template/page?current=1&size=20 -> /template/page?current=1&size=20
+[Proxy Response] 200 /template/page?current=1&size=20
+10:45:09 AM [vite] Internal server error: Attribute name cannot contain U+0022 ("), U+0027 ('), and U+003C (<).
+  Plugin: vite:vue
+  File: /root/jc-test/frontend/src/views/task/Create.vue:47:38
+  45 |              title="提示"
+  46 |              type="info"
+  47 |              description="系统将自动使用"基础数据"中的所有数据作为检测源"
+     |                                        ^
+  48 |              :closable="false"
+  49 |              style="margin-bottom: 20px"
+      at createCompilerError (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:1364:17)
+      at Object.emitError [as onerr] (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:2991:5)
+      at Tokenizer.stateInAttrName (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:854:16)
+      at Tokenizer.parse (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:1103:16)
+      at Object.baseParse (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:3030:13)
+      at Object.parse (/root/jc-test/frontend/node_modules/@vue/compiler-dom/dist/compiler-dom.cjs.js:910:23)
+      at Object.parse$1 [as parse] (/root/jc-test/frontend/node_modules/@vue/compiler-sfc/dist/compiler-sfc.cjs.js:1801:24)
+      at createDescriptor (/root/jc-test/frontend/node_modules/@vitejs/plugin-vue/dist/index.cjs:86:43)
+      at transformMain (/root/jc-test/frontend/node_modules/@vitejs/plugin-vue/dist/index.cjs:2331:34)
+      at TransformContext.transform (/root/jc-test/frontend/node_modules/@vitejs/plugin-vue/dist/index.cjs:2881:16)
+[Proxy Request] GET /task/page?current=1&size=20&taskName= -> /task/page?current=1&size=20&taskName=
+[Proxy Response] 200 /task/page?current=1&size=20&taskName=
+[Proxy Request] GET /task/page?current=1&size=20&status=4&taskName= -> /task/page?current=1&size=20&status=4&taskName=
+[Proxy Response] 500 /task/page?current=1&size=20&status=4&taskName=
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Request] GET /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10 -> /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Response] 200 /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Response] 500 /proxy/pool/list
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+[Proxy Request] GET /data/base/page?current=1&size=10 -> /data/base/page?current=1&size=10
+[Proxy Response] 200 /data/base/page?current=1&size=10
+[Proxy Request] GET /data/result/page?current=1&size=10 -> /data/result/page?current=1&size=10
+[Proxy Response] 200 /data/result/page?current=1&size=10
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 500 /data/result/statistics
+[Proxy Request] GET /data/result/page?current=1&size=10&latest=true -> /data/result/page?current=1&size=10&latest=true
+[Proxy Response] 200 /data/result/page?current=1&size=10&latest=true
+[Proxy Request] GET /task/page?current=1&size=10 -> /task/page?current=1&size=10
+[Proxy Response] 200 /task/page?current=1&size=10
+[Proxy Request] GET /task/page?current=1&size=10&status=COMPLETED -> /task/page?current=1&size=10&status=COMPLETED
+[Proxy Response] 500 /task/page?current=1&size=10&status=COMPLETED
+[Proxy Request] GET /template/list -> /template/list
+[Proxy Response] 500 /template/list
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Request] GET /server/list -> /server/list
+[Proxy Response] 200 /server/list
+[Proxy Request] GET /template/page?current=1&size=10 -> /template/page?current=1&size=10
+[Proxy Response] 200 /template/page?current=1&size=10
+[Proxy Request] GET /business/register/list -> /business/register/list
+[Proxy Response] 200 /business/register/list
+[Proxy Request] GET /business/analysis/list -> /business/analysis/list
+[Proxy Response] 200 /business/analysis/list
+[Proxy Request] GET /proxy/pool/page?current=1&size=10 -> /proxy/pool/page?current=1&size=10
+[Proxy Response] 200 /proxy/pool/page?current=1&size=10
+[Proxy Request] GET /server/page?current=1&size=10 -> /server/page?current=1&size=10
+[Proxy Response] 200 /server/page?current=1&size=10
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Error] Error: connect ECONNREFUSED 103.246.244.229:8080
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '103.246.244.229',
+  port: 8080
+}
+10:57:48 AM [vite] http proxy error at /user/login:
+Error: connect ECONNREFUSED 103.246.244.229:8080
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+[Proxy Request] GET /data/base/page?current=1&size=10 -> /data/base/page?current=1&size=10
+[Proxy Response] 200 /data/base/page?current=1&size=10
+[Proxy Request] GET /data/result/page?current=1&size=10 -> /data/result/page?current=1&size=10
+[Proxy Response] 200 /data/result/page?current=1&size=10
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 500 /data/result/statistics
+[Proxy Request] GET /data/result/page?current=1&size=10&latest=true -> /data/result/page?current=1&size=10&latest=true
+[Proxy Response] 200 /data/result/page?current=1&size=10&latest=true
+[Proxy Request] GET /task/page?current=1&size=10 -> /task/page?current=1&size=10
+[Proxy Response] 200 /task/page?current=1&size=10
+[Proxy Request] GET /task/page?current=1&size=10&taskStatus=4 -> /task/page?current=1&size=10&taskStatus=4
+[Proxy Response] 200 /task/page?current=1&size=10&taskStatus=4
+[Proxy Request] GET /template/list -> /template/list
+[Proxy Response] 200 /template/list
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Request] GET /server/list -> /server/list
+[Proxy Response] 200 /server/list
+[Proxy Request] GET /template/page?current=1&size=10 -> /template/page?current=1&size=10
+[Proxy Response] 200 /template/page?current=1&size=10
+[Proxy Request] GET /business/register/list -> /business/register/list
+[Proxy Response] 200 /business/register/list
+[Proxy Request] GET /business/analysis/list -> /business/analysis/list
+[Proxy Response] 200 /business/analysis/list
+[Proxy Request] GET /proxy/pool/page?current=1&size=10 -> /proxy/pool/page?current=1&size=10
+[Proxy Response] 200 /proxy/pool/page?current=1&size=10
+[Proxy Request] GET /server/page?current=1&size=10 -> /server/page?current=1&size=10
+[Proxy Response] 200 /server/page?current=1&size=10
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+[Proxy Request] GET /data/base/page?current=1&size=10 -> /data/base/page?current=1&size=10
+[Proxy Response] 200 /data/base/page?current=1&size=10
+[Proxy Request] GET /data/result/page?current=1&size=10 -> /data/result/page?current=1&size=10
+[Proxy Response] 200 /data/result/page?current=1&size=10
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 500 /data/result/statistics
+[Proxy Request] GET /data/result/page?current=1&size=10&latest=true -> /data/result/page?current=1&size=10&latest=true
+[Proxy Response] 200 /data/result/page?current=1&size=10&latest=true
+[Proxy Request] GET /task/page?current=1&size=10 -> /task/page?current=1&size=10
+[Proxy Response] 200 /task/page?current=1&size=10
+[Proxy Request] GET /task/page?current=1&size=10&taskStatus=4 -> /task/page?current=1&size=10&taskStatus=4
+[Proxy Response] 200 /task/page?current=1&size=10&taskStatus=4
+[Proxy Request] GET /template/list -> /template/list
+[Proxy Response] 200 /template/list
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Request] GET /server/list -> /server/list
+[Proxy Response] 200 /server/list
+[Proxy Request] GET /template/page?current=1&size=10 -> /template/page?current=1&size=10
+[Proxy Response] 200 /template/page?current=1&size=10
+[Proxy Request] GET /business/register/list -> /business/register/list
+[Proxy Response] 200 /business/register/list
+[Proxy Request] GET /business/analysis/list -> /business/analysis/list
+[Proxy Response] 200 /business/analysis/list
+[Proxy Request] GET /proxy/pool/page?current=1&size=10 -> /proxy/pool/page?current=1&size=10
+[Proxy Response] 200 /proxy/pool/page?current=1&size=10
+[Proxy Request] GET /server/page?current=1&size=10 -> /server/page?current=1&size=10
+[Proxy Response] 200 /server/page?current=1&size=10
+[Proxy Request] POST /user/login -> /user/login
+[Proxy Response] 200 /user/login
+[Proxy Request] GET /data/base/page?current=1&size=10 -> /data/base/page?current=1&size=10
+[Proxy Response] 200 /data/base/page?current=1&size=10
+[Proxy Request] GET /data/result/page?current=1&size=10 -> /data/result/page?current=1&size=10
+[Proxy Response] 200 /data/result/page?current=1&size=10
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 200 /data/result/statistics
+[Proxy Request] GET /data/result/page?current=1&size=10&latest=true -> /data/result/page?current=1&size=10&latest=true
+[Proxy Response] 200 /data/result/page?current=1&size=10&latest=true
+[Proxy Request] GET /task/page?current=1&size=10 -> /task/page?current=1&size=10
+[Proxy Response] 200 /task/page?current=1&size=10
+[Proxy Request] GET /task/page?current=1&size=10&taskStatus=4 -> /task/page?current=1&size=10&taskStatus=4
+[Proxy Response] 200 /task/page?current=1&size=10&taskStatus=4
+[Proxy Request] GET /template/list -> /template/list
+[Proxy Response] 200 /template/list
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Request] GET /server/list -> /server/list
+[Proxy Response] 200 /server/list
+[Proxy Request] GET /template/page?current=1&size=10 -> /template/page?current=1&size=10
+[Proxy Response] 200 /template/page?current=1&size=10
+[Proxy Request] GET /business/register/list -> /business/register/list
+[Proxy Response] 200 /business/register/list
+[Proxy Request] GET /business/analysis/list -> /business/analysis/list
+[Proxy Response] 200 /business/analysis/list
+[Proxy Request] GET /proxy/pool/page?current=1&size=10 -> /proxy/pool/page?current=1&size=10
+[Proxy Response] 200 /proxy/pool/page?current=1&size=10
+[Proxy Request] GET /server/page?current=1&size=10 -> /server/page?current=1&size=10
+[Proxy Response] 200 /server/page?current=1&size=10
+[Proxy Request] GET /data/base/page?current=1&size=20 -> /data/base/page?current=1&size=20
+[Proxy Response] 200 /data/base/page?current=1&size=20
+[Proxy Request] GET /data/result/page?current=1&size=20 -> /data/result/page?current=1&size=20
+[Proxy Response] 200 /data/result/page?current=1&size=20
+[Proxy Request] GET /data/result/page?current=1&size=20 -> /data/result/page?current=1&size=20
+[Proxy Response] 200 /data/result/page?current=1&size=20
+[Proxy Request] GET /data/result/statistics -> /data/result/statistics
+[Proxy Response] 200 /data/result/statistics
+[Proxy Request] GET /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10 -> /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Response] 200 /business/analysis/list?websiteUrl=&pageNum=1&pageSize=10
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Request] GET /business/register/list?taskName=&pageNum=1&pageSize=10 -> /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Response] 200 /business/register/list?taskName=&pageNum=1&pageSize=10
+[Proxy Request] GET /template/page?current=1&size=20 -> /template/page?current=1&size=20
+[Proxy Response] 200 /template/page?current=1&size=20
+11:14:20 AM [vite] Internal server error: Attribute name cannot contain U+0022 ("), U+0027 ('), and U+003C (<).
+  Plugin: vite:vue
+  File: /root/jc-test/frontend/src/views/task/Create.vue:47:38
+  45 |              title="提示"
+  46 |              type="info"
+  47 |              description="系统将自动使用"基础数据"中的所有数据作为检测源"
+     |                                        ^
+  48 |              :closable="false"
+  49 |              style="margin-bottom: 20px"
+      at createCompilerError (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:1364:17)
+      at Object.emitError [as onerr] (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:2991:5)
+      at Tokenizer.stateInAttrName (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:854:16)
+      at Tokenizer.parse (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:1103:16)
+      at Object.baseParse (/root/jc-test/frontend/node_modules/@vue/compiler-core/dist/compiler-core.cjs.js:3030:13)
+      at Object.parse (/root/jc-test/frontend/node_modules/@vue/compiler-dom/dist/compiler-dom.cjs.js:910:23)
+      at Object.parse$1 [as parse] (/root/jc-test/frontend/node_modules/@vue/compiler-sfc/dist/compiler-sfc.cjs.js:1801:24)
+      at createDescriptor (/root/jc-test/frontend/node_modules/@vitejs/plugin-vue/dist/index.cjs:86:43)
+      at transformMain (/root/jc-test/frontend/node_modules/@vitejs/plugin-vue/dist/index.cjs:2331:34)
+      at TransformContext.transform (/root/jc-test/frontend/node_modules/@vitejs/plugin-vue/dist/index.cjs:2881:16)
+[Proxy Request] GET /proxy/pool/list -> /proxy/pool/list
+[Proxy Request] GET /template/list -> /template/list
+[Proxy Request] GET /data/base/page?current=1&size=1 -> /data/base/page?current=1&size=1
+[Proxy Request] GET /server/list -> /server/list
+[Proxy Response] 200 /template/list
+[Proxy Response] 200 /proxy/pool/list
+[Proxy Response] 200 /server/list
+[Proxy Response] 200 /data/base/page?current=1&size=1
+[Proxy Request] GET /template/page?current=1&size=20 -> /template/page?current=1&size=20
+[Proxy Response] 200 /template/page?current=1&size=20
+[Proxy Request] GET /data/base/page?current=1&size=20 -> /data/base/page?current=1&size=20
+[Proxy Response] 200 /data/base/page?current=1&size=20

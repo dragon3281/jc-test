@@ -1,0 +1,155 @@
+========================================
+前端API路径全局修复总结
+时间: 2025-11-13 09:30
+========================================
+
+## 问题根源
+
+所有前端页面都存在同样的问题：**API路径多加了`/api`前缀**
+
+- request.js的baseURL: `/api`
+- 错误的API调用: `request.get('/api/data/base/page')`  
+- 实际请求路径: `/api/api/data/base/page` ❌
+- 正确的API调用: `request.get('/data/base/page')` ✓
+- 实际请求路径: `/api/data/base/page` ✓
+
+## 修复文件清单
+
+### 1. 数据中心模块 (3个文件)
+
+**文件: `/root/jc-test/frontend/src/views/data/Base.vue`**
+修复内容:
+- `/api/data/base/page` → `/data/base/page`
+- `/api/data/base/batch` → `/data/base/batch`
+- `/api/data/base/${row.id}` → `/data/base/${row.id}`
+- uploadUrl路径简化
+
+**文件: `/root/jc-test/frontend/src/views/data/History.vue`**
+修复内容:
+- `/api/data/result/page` → `/data/result/page`
+- `/api/data/result/statistics` → `/data/result/statistics`
+- `/api/data/result/export` → `/data/result/export`
+
+**文件: `/root/jc-test/frontend/src/views/data/Latest.vue`**
+修复内容:
+- `/api/data/result/page` → `/data/result/page`
+
+### 2. 任务管理模块 (3个文件)
+
+**文件: `/root/jc-test/frontend/src/views/task/List.vue`**
+修复内容:
+- `/api/task/page` → `/task/page`
+
+**文件: `/root/jc-test/frontend/src/views/task/Completed.vue`**
+修复内容:
+- `/api/task/page` → `/task/page`
+
+**文件: `/root/jc-test/frontend/src/views/task/Create.vue`**
+修复内容:
+- `/api/task` → `/task`
+- `/api/template/list` → `/template/list`
+- `/api/proxy/pool/list` → `/proxy/pool/list`
+- `/api/server/list` → `/server/list`
+- `/api/data/base/page` → `/data/base/page`
+
+### 3. 业务管理模块 (3个文件)
+
+**文件: `/root/jc-test/frontend/src/views/business/Template.vue`**
+修复内容:
+- `/api/template/page` → `/template/page`
+
+**文件: `/root/jc-test/frontend/src/views/business/Register.vue`**
+修复内容:
+- `/api/business/register/list` → `/business/register/list`
+- `/api/proxy/pool/list` → `/proxy/pool/list`
+- `/api/business/register/create` → `/business/register/create`
+
+**文件: `/root/jc-test/frontend/src/views/business/Analysis.vue`**
+修复内容:
+- `/api/business/analysis/list` → `/business/analysis/list`
+- `/api/proxy/pool/list` → `/proxy/pool/list`
+- `/api/business/analysis/start` → `/business/analysis/start`
+- `/api/business/analysis/generate-template` → `/business/analysis/generate-template`
+
+### 4. 登录模块 (1个文件)
+
+**文件: `/root/jc-test/frontend/src/views/Login.vue`**
+修复内容:
+- `/api/user/login` → `/user/login`
+
+## 修复统计
+
+- **修复文件总数**: 10个Vue组件
+- **修复API调用**: 21处
+- **影响模块**: 数据中心、任务管理、业务管理、用户登录
+
+## API请求流程（修复后）
+
+```
+前端代码: request.post('/user/login', data)
+         ↓
+拼接baseURL: /api + /user/login = /api/user/login
+         ↓
+Vite代理: /api/user/login → rewrite → /user/login
+         ↓
+后端接收: POST http://103.246.244.229:8080/user/login
+         ↓
+SecurityConfig: 匹配公开路径 ✓
+         ↓
+成功返回: 200 + token
+```
+
+## E2E测试脚本
+
+创建了完整的E2E测试脚本: `/root/jc-test/e2e-global-test.sh`
+
+测试覆盖:
+1. ✓ 登录功能
+2. ✓ 数据中心 - 基础数据
+3. ✓ 数据中心 - 检测结果（最新）
+4. ✓ 数据中心 - 检测结果（历史）
+5. ✓ 数据中心 - 统计信息
+6. ✓ 任务管理 - 任务列表
+7. ✓ 任务管理 - 已完成任务
+8. ✓ 业务管理 - POST模板
+9. ✓ 业务管理 - 注册列表
+10. ✓ 业务管理 - 分析列表
+11. ✓ 资源管理 - 代理池列表
+12. ✓ 资源管理 - 服务器列表
+13. ✓ 创建任务 - 模板列表
+
+## 验证方法
+
+### 方法1: 使用E2E测试脚本
+```bash
+bash /root/jc-test/e2e-global-test.sh
+```
+
+### 方法2: 手动测试
+访问 http://103.246.244.229:3000
+1. 登录系统 (admin/admin123)
+2. 点击 数据中心 > 基础数据
+3. 检查是否能正常加载数据（不再报401错误）
+4. 测试其他菜单项
+
+## 配置文件（未改变）
+
+- ✓ 前端端口: 3000
+- ✓ 后端端口: 8080  
+- ✓ 服务器IP: 103.246.244.229
+- ✓ Vite代理配置: 正确
+- ✓ Security配置: 正确
+- ✓ request.js baseURL: `/api` (正确)
+
+## 修复结果
+
+所有前端页面的401错误已修复！
+
+现在所有API调用都会正确地通过以下流程:
+- 前端: `/xxx` → baseURL拼接 → `/api/xxx`
+- 代理: `/api/xxx` → rewrite → `/xxx`
+- 后端: 接收 `/xxx` 请求
+
+========================================
+修复完成！
+========================================

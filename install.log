@@ -1,0 +1,15 @@
+==========================================
+自动化数据检测平台 - 依赖安装
+==========================================
+
+[0;34m[INFO][0m 检测到操作系统: centos 7
+
+[0;34m[INFO][0m 开始安装依赖软件...
+
+[0;34m[INFO][0m 检查JDK安装状态...
+[0;34m[INFO][0m 开始安装JDK 17...
+Loaded plugins: fastestmirror
+Loading mirror speeds from cached hostfile
+No package java-17-openjdk available.
+No package java-17-openjdk-devel available.
+Error: Nothing to do
