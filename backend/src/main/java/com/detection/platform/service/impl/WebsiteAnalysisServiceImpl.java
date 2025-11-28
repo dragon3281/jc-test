@@ -7,14 +7,17 @@ import com.detection.platform.dao.WebsiteAnalysisMapper;
 import com.detection.platform.entity.PostTemplate;
 import com.detection.platform.entity.WebsiteAnalysis;
 import com.detection.platform.service.PostTemplateService;
+import com.detection.platform.service.SmartWebAnalyzer;
 import com.detection.platform.service.WebsiteAnalysisService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -31,6 +34,8 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
     private final WebsiteAnalysisMapper websiteAnalysisMapper;
     private final PostTemplateService postTemplateService;
     private final ObjectMapper objectMapper;
+    private final SmartWebAnalyzer smartWebAnalyzer;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public Page<WebsiteAnalysis> pageAnalysis(Integer current, Integer size, String websiteUrl, Integer status) {
@@ -41,7 +46,7 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
             wrapper.like(WebsiteAnalysis::getWebsiteUrl, websiteUrl);
         }
         if (status != null) {
-            wrapper.eq(WebsiteAnalysis::getStatus, status);
+            wrapper.eq(WebsiteAnalysis::getAnalysisStatus, status);
         }
         
         wrapper.orderByDesc(WebsiteAnalysis::getCreateTime);
@@ -50,10 +55,18 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
 
     @Override
     public WebsiteAnalysis getAnalysisById(Long id) {
+        log.info("[Service] 查询分析记录, ID={}", id);
         WebsiteAnalysis analysis = websiteAnalysisMapper.selectById(id);
         if (analysis == null) {
+            log.error("[Service] 分析记录不存在, ID={}", id);
             throw new BusinessException("分析记录不存在");
         }
+        log.info("[Service] 查询到分析记录: ID={}, websiteUrl={}, analysisType={}, status={}, createTime={}",
+                 analysis.getId(), 
+                 analysis.getWebsiteUrl(), 
+                 analysis.getAnalysisType(),
+                 analysis.getAnalysisStatus(),
+                 analysis.getCreateTime());
         return analysis;
     }
 
@@ -61,17 +74,10 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
     public Long startAnalysis(Map<String, Object> params) {
         // 创建分析记录
         WebsiteAnalysis analysis = new WebsiteAnalysis();
+        analysis.setAnalysisType("NUMBER_CHECK");
         analysis.setWebsiteUrl((String) params.get("websiteUrl"));
-        analysis.setPorts((String) params.get("ports"));
-        analysis.setApiPaths((String) params.get("apiPaths"));
-        analysis.setTimeout((Integer) params.get("timeout"));
-        analysis.setUseProxy((Boolean) params.get("useProxy"));
-        
-        if (params.get("proxyPoolId") != null) {
-            analysis.setProxyPoolId(Long.valueOf(params.get("proxyPoolId").toString()));
-        }
-        
-        analysis.setStatus(1); // 分析中
+        analysis.setAnalysisStatus(1); // 分析中
+        analysis.setCreateTime(LocalDateTime.now());
         websiteAnalysisMapper.insert(analysis);
 
         // 异步执行分析任务
@@ -86,27 +92,85 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
     private void executeAnalysisAsync(Long analysisId) {
         new Thread(() -> {
             try {
+                log.info("[AsyncAnalysis-{}] ======== 开始异步分析 ========", analysisId);
                 WebsiteAnalysis analysis = websiteAnalysisMapper.selectById(analysisId);
+                String websiteUrl = analysis.getWebsiteUrl();
+                log.info("[AsyncAnalysis-{}] 开始智能分析网站: {}", analysisId, websiteUrl);
                 
-                // 模拟分析过程
-                Thread.sleep(5000);
+                // 使用智能分析器
+                Map<String, Object> analysisResult = smartWebAnalyzer.analyzeWebsite(websiteUrl);
                 
-                // 更新分析结果
-                analysis.setStatus(2); // 已完成
-                analysis.setDetectedPort("443");
-                analysis.setApiType(1); // JSON
-                analysis.setAnalysisResult("{\"接口\":[\"/api/check\",\"/user/register\"],\"方法\":\"POST\",\"需要Token\":true}");
-                analysis.setDetectedApis("[{\"path\":\"/api/check\",\"method\":\"POST\",\"contentType\":\"application/json\",\"requireToken\":true}]");
-                analysis.setFinishTime(LocalDateTime.now());
+                log.info("[AsyncAnalysis-{}] 智能分析器返回结果: success={}", analysisId, analysisResult.get("success"));
+                
+                if (Boolean.TRUE.equals(analysisResult.get("success"))) {
+                    // 更新分析结果
+                    analysis.setAnalysisStatus(2); // 已完成
+                    
+                    // 提取并保存注册接口信息
+                    if (analysisResult.containsKey("registerApi")) {
+                        analysis.setRegisterApi((String) analysisResult.get("registerApi"));
+                        log.info("[AsyncAnalysis-{}] 注册接口: {}", analysisId, analysisResult.get("registerApi"));
+                    }
+                    if (analysisResult.containsKey("method")) {
+                        analysis.setRegisterMethod((String) analysisResult.get("method"));
+                        log.info("[AsyncAnalysis-{}] 请求方法: {}", analysisId, analysisResult.get("method"));
+                    } else {
+                        analysis.setRegisterMethod("POST");
+                    }
+                    
+                    // 保存加密类型
+                    if (analysisResult.containsKey("encryptionType")) {
+                        analysis.setEncryptionType((String) analysisResult.get("encryptionType"));
+                        log.info("[AsyncAnalysis-{}] 加密类型: {}", analysisId, analysisResult.get("encryptionType"));
+                    }
+                    
+                    // 保存RSA密钥接口
+                    if (analysisResult.containsKey("rsaKeyApi")) {
+                        analysis.setRsaKeyApi((String) analysisResult.get("rsaKeyApi"));
+                    }
+                    
+                    // 保存请求头
+                    if (analysisResult.containsKey("requestHeaders")) {
+                        analysis.setRequestHeaders((String) analysisResult.get("requestHeaders"));
+                    }
+                    
+                    // 保存必填字段
+                    if (analysisResult.containsKey("requiredFields")) {
+                        analysis.setRequiredFields(objectMapper.writeValueAsString(analysisResult.get("requiredFields")));
+                    }
+                    
+                    // 保存完整分析结果
+                    String fullResultJson = objectMapper.writeValueAsString(analysisResult);
+                    analysis.setAnalysisResult(fullResultJson);
+                    analysis.setCompleteTime(LocalDateTime.now());
+                    
+                    log.info("[AsyncAnalysis-{}] 网站分析完成: {}, 注册接口: {}, 加密方式: {}", 
+                            analysisId, websiteUrl, analysis.getRegisterApi(), analysis.getEncryptionType());
+                    log.info("[AsyncAnalysis-{}] 完整分析结果JSON长度: {}", analysisId, fullResultJson.length());
+                    
+                    // 推送完成状态到前端
+                    pushStatusToFrontend(analysisId, 2, "分析完成", analysisResult);
+                } else {
+                    analysis.setAnalysisStatus(3); // 失败
+                    analysis.setErrorMessage((String) analysisResult.get("message"));
+                    log.error("[AsyncAnalysis-{}] 分析失败: {}", analysisId, analysisResult.get("message"));
+                    
+                    // 推送失败状态到前端
+                    pushStatusToFrontend(analysisId, 3, (String) analysisResult.get("message"), null);
+                }
                 
                 websiteAnalysisMapper.updateById(analysis);
+                log.info("[AsyncAnalysis-{}] ======== 分析结果已更新到数据库 ========", analysisId);
                 
             } catch (Exception e) {
-                log.error("网站分析执行失败", e);
+                log.error("[AsyncAnalysis-{}] 网站分析执行失败", analysisId, e);
                 WebsiteAnalysis analysis = websiteAnalysisMapper.selectById(analysisId);
-                analysis.setStatus(3); // 失败
+                analysis.setAnalysisStatus(3); // 失败
                 analysis.setErrorMessage(e.getMessage());
                 websiteAnalysisMapper.updateById(analysis);
+                
+                // 推送异常状态到前端
+                pushStatusToFrontend(analysisId, 3, "分析异常: " + e.getMessage(), null);
             }
         }, "Analysis-" + analysisId).start();
     }
@@ -115,7 +179,7 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
     public Long generateTemplate(Long analysisId) {
         WebsiteAnalysis analysis = getAnalysisById(analysisId);
         
-        if (analysis.getStatus() != 2) {
+        if (analysis.getAnalysisStatus() != 2) {
             throw new BusinessException("分析未完成,无法生成模板");
         }
 
@@ -129,7 +193,7 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
         template.setRequestBody("{\"account\":\"{{account}}\"}");
         template.setSuccessRule("{\"code\":200}");
         template.setFailRule("{\"code\":400}");
-        template.setEnableProxy(analysis.getUseProxy() ? 1 : 0);
+        template.setEnableProxy(0);
         template.setTimeoutSeconds(30);
         template.setRetryCount(3);
         template.setVersion("1.0");
@@ -148,5 +212,118 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
     public Boolean deleteAnalysis(Long id) {
         int rows = websiteAnalysisMapper.deleteById(id);
         return rows > 0;
+    }
+
+    @Override
+    public Page<WebsiteAnalysis> listRegisterAnalysis(Integer current, Integer size, String websiteUrl, Integer status) {
+        Page<WebsiteAnalysis> page = new Page<>(current, size);
+        LambdaQueryWrapper<WebsiteAnalysis> wrapper = new LambdaQueryWrapper<>();
+        if (org.springframework.util.StringUtils.hasText(websiteUrl)) {
+            wrapper.like(WebsiteAnalysis::getWebsiteUrl, websiteUrl);
+        }
+        if (status != null) {
+            wrapper.eq(WebsiteAnalysis::getAnalysisStatus, status);
+        }
+        wrapper.orderByDesc(WebsiteAnalysis::getCreateTime);
+        return websiteAnalysisMapper.selectPage(page, wrapper);
+    }
+
+    @Override
+    public Long startRegisterAnalysis(String websiteUrl) {
+        log.info("[Service] ======== 启动自动化注册分析 ======== websiteUrl={}", websiteUrl);
+        WebsiteAnalysis analysis = new WebsiteAnalysis();
+        analysis.setAnalysisType("AUTO_REGISTER");
+        analysis.setWebsiteUrl(websiteUrl);
+        analysis.setAnalysisStatus(1);
+        analysis.setCreateTime(LocalDateTime.now());
+        websiteAnalysisMapper.insert(analysis);
+        log.info("[Service] 分析记录已创建, ID={}, websiteUrl={}, analysisType=AUTO_REGISTER", analysis.getId(), websiteUrl);
+        // 复用现有异步分析线程
+        executeAnalysisAsync(analysis.getId());
+        log.info("[Service] ======== 异步分析线程已启动 ========");
+        return analysis.getId();
+    }
+
+    @Override
+    public java.util.Map<String, Object> getRegisterAnalysisResult(Long id) {
+        WebsiteAnalysis analysis = websiteAnalysisMapper.selectById(id);
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        if (analysis == null || analysis.getAnalysisStatus() != 2) {
+            map.put("ready", false);
+            return map;
+        }
+        
+        map.put("ready", true);
+        map.put("websiteUrl", analysis.getWebsiteUrl());
+        
+        // 从分析结果中提取数据
+        map.put("registerApi", analysis.getRegisterApi() != null ? analysis.getRegisterApi() : "/user/register");
+        map.put("method", analysis.getRegisterMethod() != null ? analysis.getRegisterMethod() : "POST");
+        map.put("encryptionType", analysis.getEncryptionType() != null ? analysis.getEncryptionType() : "NONE");
+        map.put("rsaKeyApi", analysis.getRsaKeyApi() != null ? analysis.getRsaKeyApi() : "");
+        
+        // 解析完整的分析结果获取更多字段
+        try {
+            if (analysis.getAnalysisResult() != null) {
+                java.util.Map<String, Object> fullResult = objectMapper.readValue(
+                    analysis.getAnalysisResult(), 
+                    java.util.Map.class
+                );
+                
+                // 提取字段映射
+                map.put("usernameField", fullResult.getOrDefault("usernameField", "username"));
+                map.put("passwordField", fullResult.getOrDefault("passwordField", "password"));
+                map.put("emailField", fullResult.getOrDefault("emailField", ""));
+                map.put("phoneField", fullResult.getOrDefault("phoneField", ""));
+                map.put("encryptionHeader", fullResult.getOrDefault("encryptionHeader", ""));
+                map.put("valueFieldName", fullResult.getOrDefault("valueFieldName", "value"));
+                
+                // 提取必填字段
+                if (fullResult.containsKey("requiredFields")) {
+                    map.put("requiredFields", fullResult.get("requiredFields"));
+                }
+            } else {
+                // 使用默认值
+                map.put("usernameField", "username");
+                map.put("passwordField", "password");
+                map.put("emailField", "");
+                map.put("phoneField", "");
+                map.put("encryptionHeader", "");
+                map.put("valueFieldName", "value");
+            }
+        } catch (Exception e) {
+            log.error("解析分析结果失败", e);
+            // 使用默认值
+            map.put("usernameField", "username");
+            map.put("passwordField", "password");
+        }
+        
+        return map;
+    }
+    
+    /**
+     * 推送分析状态到前端
+     */
+    private void pushStatusToFrontend(Long analysisId, Integer status, String message, Map<String, Object> result) {
+        try {
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("type", "analysis_status");
+            notification.put("analysisId", analysisId);
+            notification.put("status", status);
+            notification.put("message", message);
+            notification.put("timestamp", System.currentTimeMillis());
+            
+            if (result != null) {
+                notification.put("registerApi", result.get("registerApi"));
+                notification.put("encryptionType", result.get("encryptionType"));
+            }
+            
+            // 推送到WebSocket主题 /topic/analysis/{analysisId}
+            messagingTemplate.convertAndSend("/topic/analysis/" + analysisId, notification);
+            log.info("[WebSocket] 推送分析状态: analysisId={}, status={}, message={}", analysisId, status, message);
+            
+        } catch (Exception e) {
+            log.error("[WebSocket] 推送分析状态失败: {}", e.getMessage(), e);
+        }
     }
 }
