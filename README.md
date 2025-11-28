@@ -117,8 +117,9 @@ jc-test/
 ## 快速开始
 
 ### 环境要求
-- **操作系统**: CentOS 9 / Rocky Linux 9 / AlmaLinux 9 / Ubuntu 20.04+ (推荐)
-  - 需要 GLIBC 2.27+ 以支持 Playwright 浏览器自动化功能
+- **操作系统**: Ubuntu 22.04 LTS (推荐) / Ubuntu 20.04 LTS
+  - 内置 GLIBC 2.35，完美支持 Playwright 浏览器自动化功能
+  - 也支持 CentOS 9 / Rocky Linux 9 / AlmaLinux 9 (需要 GLIBC 2.27+)
   - CentOS 7 可运行但浏览器功能会降级到JS静态分析
 - **JDK**: 17+
 - **Node.js**: 16+
@@ -310,10 +311,13 @@ tail -f backend/app.log | grep -E '\[Browser\]|Playwright|捕获注册接口'
 
 ### 环境要求
 
+### 环境要求
+
 | 操作系统 | GLIBC版本 | Playwright支持 | 推荐度 |
 |---------|----------|---------------|-------|
-| CentOS 9 / Rocky Linux 9 | 2.28+ | ✅ 完全支持 | ⭐⭐⭐⭐⭐ |
-| Ubuntu 20.04+ | 2.31+ | ✅ 完全支持 | ⭐⭐⭐⭐⭐ |
+| Ubuntu 22.04 LTS | 2.35 | ✅ 完全支持 | ⭐⭐⭐⭐⭐ |
+| Ubuntu 20.04 LTS | 2.31 | ✅ 完全支持 | ⭐⭐⭐⭐⭐ |
+| CentOS 9 / Rocky Linux 9 | 2.28+ | ✅ 完全支持 | ⭐⭐⭐⭐ |
 | CentOS 8 | 2.28+ | ✅ 完全支持 | ⭐⭐⭐⭐ |
 | CentOS 7.9 | 2.17 | ⚠️ 降级到JS分析 | ⭐⭐ |
 
@@ -326,7 +330,7 @@ GLIBC_2.27 not found
 GLIBC_2.28 not found
 
 # 解决方案
-1. 升级到 CentOS 9 或 Ubuntu 20.04+
+1. 升级到 Ubuntu 22.04 LTS (推荐) 或 Ubuntu 20.04 LTS
 2. 或接受降级到 JS 静态分析 (系统会自动处理)
 ```
 
@@ -421,69 +425,80 @@ mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
 - [ ] 性能测试
 - [ ] 生产环境部署
 
-## CentOS 9 完整部署指南
+## Ubuntu 22.04 完整部署指南
 
 ### 系统准备
 
 ```bash
-# 1. 检查系统版本
-cat /etc/os-release
-# 应显示: CentOS Linux 9 或 Rocky Linux 9
+# 1. 更新系统包
+sudo apt update
+sudo apt upgrade -y
 
-# 2. 验证 GLIBC 版本
+# 2. 验证 GLIBC 版本 (Ubuntu 22.04 自带 2.35)
 ldd --version
-# 应显示: ldd (GNU libc) 2.28 或更高
+# 应显示: ldd (Ubuntu GLIBC 2.35-0ubuntu3.x) 2.35
 
 # 3. 安装基础依赖
-sudo yum update -y
-sudo yum install -y git wget curl
+sudo apt install -y git wget curl build-essential
 ```
 
 ### 安装 Java 17
 
 ```bash
-# 安装 OpenJDK 17
-sudo yum install -y java-17-openjdk java-17-openjdk-devel
+# Ubuntu 22.04 推荐使用 OpenJDK 17
+sudo apt install -y openjdk-17-jdk openjdk-17-jre
 
 # 验证安装
 java -version
-# 应显示: openjdk version "17.x.x"
+# 应显示: openjdk version "17.0.x"
 
 # 设置 JAVA_HOME
-echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk' >> ~/.bashrc
+echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
 echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
+
+# 验证环境变量
+echo $JAVA_HOME
 ```
 
 ### 安装 Maven
 
 ```bash
-# 下载 Maven 3.9.x
-wget https://dlcdn.apache.org/maven/maven-3/3.9.5/binaries/apache-maven-3.9.5-bin.tar.gz
-tar -xzf apache-maven-3.9.5-bin.tar.gz
-sudo mv apache-maven-3.9.5 /opt/maven
-
-# 配置环境变量
-echo 'export MAVEN_HOME=/opt/maven' >> ~/.bashrc
-echo 'export PATH=$MAVEN_HOME/bin:$PATH' >> ~/.bashrc
-source ~/.bashrc
+# Ubuntu 22.04 可以直接使用 apt 安装 Maven
+sudo apt install -y maven
 
 # 验证安装
 mvn -v
+# 应显示: Apache Maven 3.6.3 或更高版本
+
+# 如果需要最新版本，可以手动安装
+wget https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz
+tar -xzf apache-maven-3.9.6-bin.tar.gz
+sudo mv apache-maven-3.9.6 /opt/maven
+
+# 配置环境变量（仅当手动安装时）
+echo 'export MAVEN_HOME=/opt/maven' >> ~/.bashrc
+echo 'export PATH=$MAVEN_HOME/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### 安装 Node.js
 
 ```bash
-# 安装 NodeSource 仓库
-curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-
-# 安装 Node.js
-sudo yum install -y nodejs
+# 使用 NodeSource 仓库安装 Node.js 18 LTS
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # 验证安装
 node -v
 npm -v
+# 应显示: v18.x.x 和 9.x.x
+
+# 配置 npm 全局路径（可选，避免权限问题）
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### 克隆项目
@@ -492,7 +507,10 @@ npm -v
 # 配置 Git SSH 密钥 (如果尚未配置)
 ssh-keygen -t ed25519 -C "your_email@example.com"
 cat ~/.ssh/id_ed25519.pub
-# 将公钥添加到 GitHub Settings -> SSH Keys
+# 将公钥添加到 GitHub Settings -> SSH and GPG Keys
+
+# 测试 SSH 连接
+ssh -T git@github.com
 
 # 克隆项目
 git clone git@github.com:dragon3281/-.git
@@ -503,22 +521,39 @@ cd jc-test
 
 ```bash
 # 安装 Docker
-sudo yum install -y yum-utils
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo yum install -y docker-ce docker-ce-cli containerd.io
+sudo apt install -y apt-transport-https ca-certificates gnupg lsb-release
+
+# 添加 Docker 官方 GPG key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# 设置 Docker 仓库
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 安装 Docker Engine
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 启动 Docker 服务
 sudo systemctl start docker
 sudo systemctl enable docker
 
-# 安装 Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# 将当前用户添加到 docker 组（避免每次使用 sudo）
+sudo usermod -aG docker $USER
+
+# 注销并重新登录以使组权限生效，或执行：
+newgrp docker
+
+# 验证 Docker 安装
+docker --version
+docker compose version
 
 # 启动基础服务
 cd docker
-sudo docker-compose up -d
+docker compose up -d
 
 # 验证服务状态
-sudo docker-compose ps
+docker compose ps
+# 应显示 MySQL、Redis、RabbitMQ 都处于 running 状态
 ```
 
 ### 配置数据库
@@ -528,10 +563,14 @@ sudo docker-compose ps
 sleep 30
 
 # 导入初始化脚本
-sudo docker exec -i jc-mysql mysql -uroot -p123456 < ../sql/init.sql
+docker exec -i jc-mysql mysql -uroot -p123456 < ../sql/init.sql
 
 # 验证数据库
-sudo docker exec -it jc-mysql mysql -uroot -p123456 -e "SHOW DATABASES;"
+docker exec -it jc-mysql mysql -uroot -p123456 -e "SHOW DATABASES;"
+# 应该能看到 detection_platform 数据库
+
+# 验证表结构
+docker exec -it jc-mysql mysql -uroot -p123456 -e "USE detection_platform; SHOW TABLES;"
 ```
 
 ### 安装 Playwright 浏览器
@@ -539,11 +578,23 @@ sudo docker exec -it jc-mysql mysql -uroot -p123456 -e "SHOW DATABASES;"
 ```bash
 cd ../backend
 
+# Ubuntu 22.04 需要先安装浏览器依赖
+sudo apt install -y \
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+    libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+    libasound2 libpangocairo-1.0-0 libgtk-3-0
+
 # 安装 Chromium 浏览器驱动
 mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
               -Dexec.args="install chromium"
 
-# 验证安装成功 (应无 GLIBC 错误)
+# 安装系统依赖（Playwright 会提示需要的依赖）
+mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
+              -Dexec.args="install-deps chromium"
+
+# 验证安装成功 (应该没有 GLIBC 错误)
+echo "✅ Playwright 浏览器安装完成"
 ```
 
 ### 启动后端服务
@@ -552,14 +603,21 @@ mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
 # 编译项目
 mvn clean package -DskipTests
 
-# 启动服务 (后台运行)
+# 方式1: 直接运行 JAR 包（前台运行）
+java -jar target/detection-platform-1.0.0.jar
+
+# 方式2: 后台运行
 nohup java -jar target/detection-platform-1.0.0.jar > app.log 2>&1 &
 
 # 查看日志
 tail -f app.log
 
 # 验证启动成功 (看到以下信息)
-# Started DetectionPlatformApplication in X seconds
+# Started DetectionPlatformApplication in X.XXX seconds
+# Tomcat started on port(s): 8080 (http)
+
+# 测试后端 API
+curl http://localhost:8080/actuator/health
 ```
 
 ### 启动前端服务
@@ -570,74 +628,299 @@ cd ../frontend
 # 安装依赖
 npm install
 
-# 启动开发服务器 (后台运行)
+# 方式1: 开发模式（前台运行）
+npm run dev
+
+# 方式2: 后台运行
 nohup npm run dev > dev.log 2>&1 &
 
 # 查看日志
 tail -f dev.log
 
 # 验证启动成功 (看到以下信息)
-# VITE ready in X ms
-# Local: http://localhost:3000/
+# VITE v5.x.x ready in XXX ms
+# ➜  Local:   http://localhost:3000/
+
+# 测试前端访问
+curl http://localhost:3000
 ```
 
 ### 验证系统功能
 
 ```bash
-# 1. 检查服务状态
-curl http://localhost:8080/api/health  # 后端健康检查
-curl http://localhost:3000              # 前端访问
+# 1. 检查所有服务状态
+echo "=== Docker 服务 ==="
+docker compose ps
 
-# 2. 验证浏览器拦截功能
-tail -f ../backend/app.log | grep '\[Browser\]'
+echo "=== 后端服务 ==="
+curl -s http://localhost:8080/actuator/health | grep -o '"status":"[^"]*"'
+
+echo "=== 前端服务 ==="
+curl -s http://localhost:3000 | grep -o '<title>[^<]*</title>'
+
+# 2. 验证 Playwright 浏览器拦截功能
+echo "=== 监控浏览器活动 ==="
+tail -f ../backend/app.log | grep -E '\[Browser\]|Playwright|浏览器'
 
 # 3. 在前端创建一个分析任务，观察日志输出
-# 应该看到:
-# [Browser] 捕获注册接口: https://xxx.com/api/register [POST]
+# 访问 http://localhost:3000
+# 登录后进入 "业务中心" -> "自动化注册分析"
+# 创建新分析任务
+
+# 成功时应该看到:
+# [Browser] 捕获注册接口: https://example.com/api/register [POST]
+# [Browser] 检测到加密方式: AES-CBC
 ```
 
-### 防火墙配置 (如果需要外网访问)
+### Ubuntu 防火墙配置 (UFW)
 
 ```bash
-# 开放端口
-sudo firewall-cmd --permanent --add-port=3000/tcp  # 前端
-sudo firewall-cmd --permanent --add-port=8080/tcp  # 后端
-sudo firewall-cmd --reload
+# Ubuntu 使用 UFW 防火墙
 
-# 验证防火墙规则
-sudo firewall-cmd --list-ports
+# 检查防火墙状态
+sudo ufw status
+
+# 如果需要开放端口给外网访问
+sudo ufw allow 3000/tcp comment 'Frontend'
+sudo ufw allow 8080/tcp comment 'Backend API'
+sudo ufw allow 22/tcp comment 'SSH'
+
+# 启用防火墙（如果尚未启用）
+sudo ufw enable
+
+# 查看规则
+sudo ufw status numbered
 ```
 
-### 生产环境部署建议
+### 生产环境部署 (systemd)
 
 ```bash
-# 1. 使用 systemd 管理服务
-sudo tee /etc/systemd/system/detection-backend.service > /dev/null <<EOF
+# 1. 创建后端服务
+sudo tee /etc/systemd/system/detection-backend.service > /dev/null <<'EOF'
 [Unit]
-Description=Detection Platform Backend
-After=network.target
+Description=Detection Platform Backend Service
+After=network.target docker.service
+Requires=docker.service
 
 [Service]
 Type=simple
-User=detection
-WorkingDirectory=/opt/jc-test/backend
+User=$USER
+WorkingDirectory=/home/$USER/jc-test/backend
 ExecStart=/usr/bin/java -jar target/detection-platform-1.0.0.jar
 Restart=always
 RestartSec=10
+StandardOutput=append:/home/$USER/jc-test/backend/app.log
+StandardError=append:/home/$USER/jc-test/backend/app.log
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# 启动服务
+# 替换 $USER 为实际用户名
+sudo sed -i "s/\$USER/$USER/g" /etc/systemd/system/detection-backend.service
+
+# 2. 创建前端服务（生产环境应该使用构建后的静态文件 + Nginx）
+sudo tee /etc/systemd/system/detection-frontend.service > /dev/null <<'EOF'
+[Unit]
+Description=Detection Platform Frontend Service
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=/home/$USER/jc-test/frontend
+ExecStart=/usr/bin/npm run dev
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/$USER/jc-test/frontend/dev.log
+StandardError=append:/home/$USER/jc-test/frontend/dev.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo sed -i "s/\$USER/$USER/g" /etc/systemd/system/detection-frontend.service
+
+# 3. 启动服务
 sudo systemctl daemon-reload
 sudo systemctl start detection-backend
-sudo systemctl enable detection-backend
+sudo systemctl start detection-frontend
 
-# 2. 使用 Nginx 反向代理
-# 3. 配置 SSL 证书
-# 4. 设置日志轮转
-# 5. 配置定时备份
+# 4. 设置开机自启
+sudo systemctl enable detection-backend
+sudo systemctl enable detection-frontend
+
+# 5. 查看服务状态
+sudo systemctl status detection-backend
+sudo systemctl status detection-frontend
+
+# 6. 查看日志
+sudo journalctl -u detection-backend -f
+sudo journalctl -u detection-frontend -f
+```
+
+### 使用 Nginx 反向代理（生产环境推荐）
+
+```bash
+# 1. 安装 Nginx
+sudo apt install -y nginx
+
+# 2. 创建配置文件
+sudo tee /etc/nginx/sites-available/detection-platform > /dev/null <<'EOF'
+server {
+    listen 80;
+    server_name your-domain.com;  # 替换为你的域名
+
+    # 前端静态文件
+    location / {
+        root /home/$USER/jc-test/frontend/dist;
+        try_files $uri $uri/ /index.html;
+        index index.html;
+    }
+
+    # 后端 API 代理
+    location /api/ {
+        proxy_pass http://localhost:8080/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket 支持
+    location /ws/ {
+        proxy_pass http://localhost:8080/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+EOF
+
+sudo sed -i "s/\$USER/$USER/g" /etc/nginx/sites-available/detection-platform
+
+# 3. 构建前端生产版本
+cd /home/$USER/jc-test/frontend
+npm run build
+
+# 4. 启用配置
+sudo ln -s /etc/nginx/sites-available/detection-platform /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default  # 删除默认配置
+
+# 5. 测试配置
+sudo nginx -t
+
+# 6. 重启 Nginx
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+
+# 7. 验证访问
+curl http://localhost
+```
+
+### 配置 SSL 证书（HTTPS）
+
+```bash
+# 使用 Let's Encrypt 免费证书
+
+# 1. 安装 Certbot
+sudo apt install -y certbot python3-certbot-nginx
+
+# 2. 获取证书（自动配置 Nginx）
+sudo certbot --nginx -d your-domain.com
+
+# 3. 测试自动续期
+sudo certbot renew --dry-run
+
+# 4. Certbot 会自动创建续期定时任务
+sudo systemctl status certbot.timer
+```
+
+### 常见问题排查（Ubuntu 特定）
+
+**问题1: Playwright 浏览器依赖缺失**
+```bash
+# 错误信息
+Host system is missing dependencies
+
+# 解决方案
+sudo apt install -y \
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+    libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+    libasound2 libpangocairo-1.0-0 libgtk-3-0
+
+# 或使用 Playwright 自动安装
+cd backend
+mvn exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
+              -Dexec.args="install-deps"
+```
+
+**问题2: Docker 权限问题**
+```bash
+# 错误信息
+Got permission denied while trying to connect to the Docker daemon socket
+
+# 解决方案
+sudo usermod -aG docker $USER
+newgrp docker
+# 或注销后重新登录
+```
+
+**问题3: 端口被占用**
+```bash
+# 查看端口占用
+sudo lsof -i :8080
+sudo lsof -i :3000
+
+# 终止占用进程
+sudo kill -9 <PID>
+
+# 或修改配置文件中的端口
+```
+
+**问题4: npm install 速度慢**
+```bash
+# 使用国内镜像源
+npm config set registry https://registry.npmmirror.com
+
+# 或使用 cnpm
+npm install -g cnpm --registry=https://registry.npmmirror.com
+cnpm install
+```
+
+### 性能优化建议（Ubuntu）
+
+```bash
+# 1. 调整系统文件描述符限制
+echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
+echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
+
+# 2. 优化 Java 堆内存（根据服务器配置）
+# 编辑 systemd 服务文件，添加 JVM 参数
+sudo systemctl edit detection-backend
+# 添加:
+# [Service]
+# Environment="JAVA_OPTS=-Xms512m -Xmx2048m -XX:+UseG1GC"
+
+# 3. 启用 Docker 日志轮转
+sudo tee /etc/docker/daemon.json > /dev/null <<'EOF'
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+EOF
+
+sudo systemctl restart docker
 ```
 
 ---
@@ -648,7 +931,9 @@ sudo systemctl enable detection-backend
 2. **性能**: 根据实际业务量调整并发数和服务器资源
 3. **监控**: 定期检查日志和监控指标
 4. **备份**: 定期备份数据库和重要配置文件
-5. **系统版本**: 强烈推荐使用 CentOS 9 或 Ubuntu 20.04+ 以获得完整的浏览器拦截功能
+5. **系统版本**: 强烈推荐使用 Ubuntu 22.04 LTS 以获得完整的 Playwright 浏览器拦截功能
+6. **防火墙**: Ubuntu 使用 UFW，CentOS 使用 firewalld，配置方法不同
+7. **包管理**: Ubuntu 使用 apt，安装路径和服务管理与 CentOS/yum 有所不同
 
 ## 许可证
 
