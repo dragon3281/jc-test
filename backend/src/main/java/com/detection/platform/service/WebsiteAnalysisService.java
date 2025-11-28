@@ -37,4 +37,19 @@ public interface WebsiteAnalysisService {
      * 删除分析记录
      */
     Boolean deleteAnalysis(Long id);
+
+    /**
+     * 自动化注册分析分页列表
+     */
+    Page<WebsiteAnalysis> listRegisterAnalysis(Integer current, Integer size, String websiteUrl, Integer status);
+
+    /**
+     * 启动自动化注册分析
+     */
+    Long startRegisterAnalysis(String websiteUrl);
+
+    /**
+     * 获取自动化注册分析结果（用于前端一键填充）
+     */
+    java.util.Map<String, Object> getRegisterAnalysisResult(Long id);
 }
