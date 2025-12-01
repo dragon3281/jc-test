@@ -46,16 +46,17 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 1" type="warning">分析中</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success">已完成</el-tag>
-            <el-tag v-else-if="row.status === 3" type="danger">失败</el-tag>
+            <el-tag v-if="row.analysisStatus === 1" type="warning">分析中</el-tag>
+            <el-tag v-else-if="row.analysisStatus === 2" type="success">已完成</el-tag>
+            <el-tag v-else-if="row.analysisStatus === 3" type="danger">失败</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleViewDetail(row)">详情</el-button>
-            <el-button v-if="row.status === 2" link type="success" @click="handleGenerateTemplate(row)">生成模板</el-button>
+            <el-button v-if="row.analysisStatus === 2" link type="success" @click="handleGenerateTemplate(row)">生成模板</el-button>
+            <el-button v-if="row.analysisStatus === 2" link type="primary" @click="handlePushToRegister(row)">一键推送</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -128,9 +129,9 @@
           <el-tag v-else-if="currentRow.apiType === 3" type="warning">HTML</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag v-if="currentRow.status === 1" type="warning">分析中</el-tag>
-          <el-tag v-else-if="currentRow.status === 2" type="success">已完成</el-tag>
-          <el-tag v-else-if="currentRow.status === 3" type="danger">失败</el-tag>
+          <el-tag v-if="currentRow.analysisStatus === 1" type="warning">分析中</el-tag>
+          <el-tag v-else-if="currentRow.analysisStatus === 2" type="success">已完成</el-tag>
+          <el-tag v-else-if="currentRow.analysisStatus === 3" type="danger">失败</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="创建时间">{{ currentRow.createTime }}</el-descriptions-item>
         <el-descriptions-item label="完成时间">{{ currentRow.finishTime || '-' }}</el-descriptions-item>
@@ -162,10 +163,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useRouter } from 'vue-router'
 
 // 查询参数
 const queryParams = reactive({
@@ -180,11 +182,16 @@ const tableData = ref([])
 const total = ref(0)
 const loading = ref(false)
 
+// 轮询相关
+let pollingTimer = null
+const POLLING_INTERVAL = 3000 // 3秒轮询一次
+
 // 对话框
 const showAnalyzeDialog = ref(false)
 const detailVisible = ref(false)
 const currentRow = ref(null)
 const submitLoading = ref(false)
+const router = useRouter()
 
 // 表单
 const analyzeFormRef = ref(null)
@@ -211,16 +218,41 @@ const analyzeRules = {
 const proxyPools = ref([])
 
 // 获取列表数据
-const fetchData = async () => {
-  loading.value = true
+const fetchData = async (silent = false) => {
+  if (!silent) loading.value = true
   try {
     const res = await request.get('/business/analysis/list', { params: queryParams })
     tableData.value = res.data.records || []
     total.value = res.data.total || 0
+    
+    // 检查是否有进行中的任务，决定是否继续轮询
+    const hasAnalyzing = tableData.value.some(item => item.analysisStatus === 1)
+    if (hasAnalyzing) {
+      startPolling()
+    } else {
+      stopPolling()
+    }
   } catch (error) {
     ElMessage.error('查询失败')
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
+  }
+}
+
+// 开始轮询
+const startPolling = () => {
+  if (pollingTimer) return // 已经在轮询中
+  
+  pollingTimer = setInterval(() => {
+    fetchData(true) // 静默刷新，不显示loading
+  }, POLLING_INTERVAL)
+}
+
+// 停止轮询
+const stopPolling = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
   }
 }
 
@@ -298,6 +330,11 @@ const handleGenerateTemplate = async (row) => {
   }
 }
 
+// 一键推送到自动化注册（跳转并带上分析ID）
+const handlePushToRegister = (row) => {
+  router.push({ path: '/business/register', query: { analysisId: row.id } })
+}
+
 // 删除
 const handleDelete = async (row) => {
   try {
@@ -329,6 +366,11 @@ const resetForm = () => {
 onMounted(() => {
   fetchData()
   fetchProxyPools()
+})
+
+// 组件卸载时清理轮询
+onBeforeUnmount(() => {
+  stopPolling()
 })
 </script>
 

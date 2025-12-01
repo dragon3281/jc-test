@@ -9,6 +9,18 @@
               <el-icon><Plus /></el-icon>
               新建注册任务
             </el-button>
+            <el-button type="success" @click="showUploadDialog = true">
+              <el-icon><Upload /></el-icon>
+              脚本上传
+            </el-button>
+            <el-button type="warning" @click="showDraftDialog = true">
+              <el-icon><Memo /></el-icon>
+              草稿箱
+            </el-button>
+            <el-button type="info" @click="showTemplateDialog = true">
+              <el-icon><Tickets /></el-icon>
+              注册模板
+            </el-button>
           </div>
         </div>
       </template>
@@ -70,6 +82,7 @@
             <el-button v-if="row.status === 2" link type="warning" @click="handlePause(row)">暂停</el-button>
             <el-button v-if="row.status === 4" link type="primary" @click="handleResume(row)">继续</el-button>
             <el-button link type="primary" @click="handleViewDetail(row)">详情</el-button>
+            <el-button v-if="row.status === 3 && row.successCount > 0 && !hasTemplateFor(row.websiteUrl)" link type="success" @click="handleAddToTemplate(row)">保存为模板</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -89,8 +102,89 @@
       </div>
     </el-card>
 
+    <!-- 脚本上传对话框 -->
+    <el-dialog v-model="showUploadDialog" title="脚本上传" width="600px">
+      <el-form :model="uploadForm" label-width="120px">
+        <el-form-item label="草稿名称">
+          <el-input v-model="uploadForm.draftName" placeholder="如：自动化注册脚本" />
+        </el-form-item>
+        <el-form-item label="目标站URL">
+          <el-input v-model="uploadForm.websiteUrl" placeholder="https://example.com" />
+        </el-form-item>
+        <el-form-item label="脚本文件">
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept=".py"
+          >
+            <el-button type="primary">选择文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">支持Python脚本，例如 自动化注册_linux.py</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showUploadDialog = false">取消</el-button>
+        <el-button type="success" :loading="uploadLoading" @click="submitUpload">上传</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 草稿箱管理对话框 -->
+    <el-dialog v-model="showDraftDialog" title="草稿箱管理" width="1200px">
+      <div style="margin-bottom: 10px">
+        <el-button v-if="draftList.length > 0" type="danger" size="small" @click="handleClearDrafts">清空草稿箱</el-button>
+      </div>
+      <el-table :data="draftList" border stripe>
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column prop="draftName" label="草稿名称" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="websiteUrl" label="目标网站" min-width="150" show-overflow-tooltip />
+        <el-table-column label="测试结果" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.testResult === 0" type="info">未测试</el-tag>
+            <el-tag v-else-if="row.testResult === 1" type="success">通过</el-tag>
+            <el-tag v-else-if="row.testResult === 2" type="danger">失败</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="autoNotes" label="备注" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="createTime" label="创建时间" width="150">
+          <template #default="{ row }">
+            {{ formatTime(row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="250" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handleTestDraft(row)">测试</el-button>
+            <el-button v-if="row.testResult === 1 && row.testToken" link type="success" @click="handleSaveDraftToTemplate(row)">保存为模板</el-button>
+            <el-button link type="danger" @click="handleDeleteDraft(row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
     <!-- 新建注册任务对话框 -->
     <el-dialog v-model="showCreateDialog" title="新建注册任务" width="800px" @close="resetForm">
+      <!-- 顶部模板选择（仅当非分析结果填充时显示） -->
+      <el-alert v-if="!templateLoaded && !route.query.analysisId" type="info" :closable="false" style="margin-bottom: 15px">
+        <template #title>
+          <span>可选择已有模板快速填充：</span>
+          <el-select v-model="selectedTemplateId" placeholder="选择模板" size="small" style="width: 300px; margin-left: 10px" @change="loadTemplate">
+            <el-option v-for="t in templateList" :key="t.id" :label="t.templateName" :value="t.id" />
+          </el-select>
+        </template>
+      </el-alert>
+      <el-alert v-else-if="templateLoaded" type="success" :closable="false" style="margin-bottom: 15px">
+        <template #title>
+          <span>已加载模板：{{ loadedTemplateName }}</span>
+          <el-button link type="primary" size="small" @click="clearTemplate" style="margin-left: 10px">清除</el-button>
+        </template>
+      </el-alert>
+      <el-alert v-else-if="route.query.analysisId" type="success" :closable="false" style="margin-bottom: 15px">
+        <template #title>
+          <span>✨ 已从网站分析结果自动填充参数</span>
+        </template>
+      </el-alert>
       <el-steps :active="currentStep" finish-status="success" align-center class="steps">
         <el-step title="基础配置" />
         <el-step title="加密配置" />
@@ -143,34 +237,90 @@
         <!-- 步骤2: 加密配置 -->
         <div v-show="currentStep === 1">
           <el-form-item label="加密类型" prop="encryptionType">
-            <el-radio-group v-model="registerForm.encryptionType">
-              <el-radio label="NONE">无加密</el-radio>
-              <el-radio label="DES_RSA">DES+RSA双重加密</el-radio>
-            </el-radio-group>
-            <div class="form-tip">根据目标网站的加密方式选择</div>
+            <el-select v-model="registerForm.encryptionType" placeholder="请选择加密方式" style="width: 100%">
+              <el-option label="无加密" value="NONE">
+                <span>无加密</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">明文传输</span>
+              </el-option>
+              <el-option label="DES+RSA (老式JS库)" value="DES_RSA">
+                <span>DES+RSA (老式JS库)</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">使用老式encryptedString方法</span>
+              </el-option>
+              <el-option label="DES+RSA (标准PKCS1)" value="DES_RSA_STANDARD">
+                <span>DES+RSA (标准PKCS1)</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">使用标准RSA PKCS1填充</span>
+              </el-option>
+              <el-option label="AES+RSA" value="AES_RSA">
+                <span>AES+RSA</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">AES-CBC + RSA加密</span>
+              </el-option>
+              <el-option label="MD5哈希" value="MD5">
+                <span>MD5哈希</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">仅对密码MD5加密</span>
+              </el-option>
+              <el-option label="BASE64编码" value="BASE64">
+                <span>BASE64编码</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">简单Base64编码</span>
+              </el-option>
+              <el-option label="自定义脚本" value="CUSTOM">
+                <span>自定义脚本</span>
+                <span style="color: #8492a6; font-size: 13px; margin-left: 10px">上传Python/JS脚本</span>
+              </el-option>
+            </el-select>
+            <div class="form-tip">系统会自动识别目标网站使用的加密方式</div>
           </el-form-item>
-          <template v-if="registerForm.encryptionType === 'DES_RSA'">
+          
+          <!-- DES+RSA相关配置 -->
+          <template v-if="['DES_RSA', 'DES_RSA_STANDARD', 'AES_RSA'].includes(registerForm.encryptionType)">
             <el-form-item label="RSA密钥接口" prop="rsaKeyApi">
-              <el-input v-model="registerForm.rsaKeyApi" placeholder="/wps/session/key/rsa" />
+              <el-input v-model="registerForm.rsaKeyApi" placeholder="/api/get-key 或 /session/key/rsa" />
               <div class="form-tip">获取RSA公钥的接口地址</div>
             </el-form-item>
             <el-form-item label="时间戳参数">
-              <el-input v-model="registerForm.rsaTsParam" placeholder="t" />
-              <div class="form-tip">RSA接口时间戳参数名，默认为t</div>
+              <el-input v-model="registerForm.rsaTsParam" placeholder="t, timestamp, ts" />
+              <div class="form-tip">RSA接口时间戳参数名(常见: t, timestamp, ts)</div>
             </el-form-item>
             <el-form-item label="加密请求头">
-              <el-input v-model="registerForm.encryptionHeader" placeholder="encryption" />
+              <el-input v-model="registerForm.encryptionHeader" placeholder="encryption, X-Encrypt-Key, Authorization" />
               <div class="form-tip">RSA加密后的密钥放在哪个请求头</div>
             </el-form-item>
             <el-form-item label="数据包装字段">
-              <el-input v-model="registerForm.valueFieldName" placeholder="value" />
-              <div class="form-tip">加密数据包装的字段名，例如{"value":"加密内容"}</div>
-            </el-form-item>
-            <el-form-item label="重复用户名提示">
-              <el-input v-model="registerForm.dupMsgSubstring" placeholder="Ang username na ito ay ginamit na" />
-              <div class="form-tip">用于验证注册成功的重复用户名提示文本</div>
+              <el-input v-model="registerForm.valueFieldName" placeholder="value, data, payload, encrypted" />
+              <div class="form-tip">加密数据包装的字段名</div>
             </el-form-item>
           </template>
+          
+          <!-- MD5相关配置 -->
+          <template v-if="registerForm.encryptionType === 'MD5'">
+            <el-form-item label="加盐值(可选)">
+              <el-input v-model="registerForm.md5Salt" placeholder="留空则不加盐" />
+              <div class="form-tip">MD5加密时的盐值,不填则直接MD5</div>
+            </el-form-item>
+            <el-form-item label="加密字段">
+              <el-checkbox-group v-model="registerForm.md5Fields">
+                <el-checkbox label="password">密码</el-checkbox>
+                <el-checkbox label="username">用户名</el-checkbox>
+              </el-checkbox-group>
+              <div class="form-tip">选择需要MD5加密的字段</div>
+            </el-form-item>
+          </template>
+          
+          <!-- 通用验证配置 -->
+          <el-form-item label="成功验证方式">
+            <el-radio-group v-model="registerForm.successCheckType">
+              <el-radio label="token">检测Token</el-radio>
+              <el-radio label="message">检测成功消息</el-radio>
+              <el-radio label="duplicate">检测重复提示</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item v-if="registerForm.successCheckType === 'duplicate'" label="重复用户名提示">
+            <el-input v-model="registerForm.dupMsgSubstring" placeholder="用户名已存在, username already exists" />
+            <div class="form-tip">用于验证注册成功的重复用户名提示文本</div>
+          </el-form-item>
+          <el-form-item v-if="registerForm.successCheckType === 'message'" label="成功消息关键词">
+            <el-input v-model="registerForm.successMessage" placeholder="注册成功, success, registered" />
+            <div class="form-tip">注册成功时响应中包含的关键词</div>
+          </el-form-item>
         </div>
 
         <!-- 步骤3: 执行配置 -->
@@ -216,7 +366,16 @@
           <el-descriptions :column="2" border v-if="currentRow">
             <el-descriptions-item label="任务名称">{{ currentRow.taskName }}</el-descriptions-item>
             <el-descriptions-item label="目标网站">{{ currentRow.websiteUrl }}</el-descriptions-item>
-            <el-descriptions-item label="加密类型">{{ currentRow.encryptionType || 'NONE' }}</el-descriptions-item>
+            <el-descriptions-item label="加密类型">
+              <el-tag v-if="currentRow.encryptionType === 'NONE' || !currentRow.encryptionType" type="info" size="small">无加密</el-tag>
+              <el-tag v-else-if="currentRow.encryptionType === 'DES_RSA'" type="warning" size="small">DES+RSA(老式JS)</el-tag>
+              <el-tag v-else-if="currentRow.encryptionType === 'DES_RSA_STANDARD'" type="warning" size="small">DES+RSA(标准)</el-tag>
+              <el-tag v-else-if="currentRow.encryptionType === 'AES_RSA'" type="success" size="small">AES+RSA</el-tag>
+              <el-tag v-else-if="currentRow.encryptionType === 'MD5'" type="primary" size="small">MD5哈希</el-tag>
+              <el-tag v-else-if="currentRow.encryptionType === 'BASE64'" type="" size="small">BASE64</el-tag>
+              <el-tag v-else-if="currentRow.encryptionType === 'CUSTOM'" type="danger" size="small">自定义</el-tag>
+              <span v-else>{{ currentRow.encryptionType }}</span>
+            </el-descriptions-item>
             <el-descriptions-item label="创建数量">{{ currentRow.accountCount || 0 }}</el-descriptions-item>
             <el-descriptions-item label="总数量">{{ currentRow.totalCount || 0 }}</el-descriptions-item>
             <el-descriptions-item label="已完成">{{ currentRow.completedCount || 0 }}</el-descriptions-item>
@@ -264,12 +423,95 @@
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
+
+    <!-- 模板管理对话框 -->
+    <el-dialog v-model="showTemplateDialog" title="注册模板管理" width="1200px">
+      <el-table :data="templateList" border stripe>
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column prop="templateName" label="模板名称" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="websiteUrl" label="目标网站" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="registerApi" label="注册接口" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="method" label="方法" width="70" />
+        <el-table-column prop="encryptionType" label="加密类型" width="160">
+          <template #default="{ row }">
+            <el-tag v-if="row.encryptionType === 'NONE'" type="info" size="small">无加密</el-tag>
+            <el-tag v-else-if="row.encryptionType === 'DES_RSA'" type="warning" size="small">DES+RSA(老式JS)</el-tag>
+            <el-tag v-else-if="row.encryptionType === 'DES_RSA_STANDARD'" type="warning" size="small">DES+RSA(标准)</el-tag>
+            <el-tag v-else-if="row.encryptionType === 'AES_RSA'" type="success" size="small">AES+RSA</el-tag>
+            <el-tag v-else-if="row.encryptionType === 'MD5'" type="primary" size="small">MD5哈希</el-tag>
+            <el-tag v-else-if="row.encryptionType === 'BASE64'" type="" size="small">BASE64</el-tag>
+            <el-tag v-else-if="row.encryptionType === 'CUSTOM'" type="danger" size="small">自定义</el-tag>
+            <span v-else>{{ row.encryptionType }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="notes" label="关键逻辑备注" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-text v-if="row.notes" type="warning" size="small">{{ row.notes }}</el-text>
+            <span v-else style="color: #909399">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="150">
+          <template #default="{ row }">
+            {{ formatTime(row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right">
+          <template #default="{ row }">
+            <div style="display: flex; gap: 8px; justify-content: center;">
+              <el-button link type="primary" @click="useTemplate(row)">使用</el-button>
+              <el-button link type="info" @click="viewTemplateDetail(row)">详情</el-button>
+              <el-button link type="danger" @click="deleteTemplate(row)">删除</el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <!-- 添加模板对话框 -->
+    <el-dialog v-model="showAddTemplateDialog" title="保存为注册模板" width="600px">
+      <el-form :model="addTemplateForm" label-width="120px">
+        <el-form-item label="模板名称">
+          <el-input v-model="addTemplateForm.templateName" placeholder="请输入模板名称" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showAddTemplateDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitAddTemplate" :loading="addTemplateLoading">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 模板详情对话框 -->
+    <el-dialog v-model="showTemplateDetailDialog" title="模板详情" width="700px">
+      <el-descriptions :column="2" border v-if="currentTemplate">
+        <el-descriptions-item label="模板名称">{{ currentTemplate.templateName }}</el-descriptions-item>
+        <el-descriptions-item label="目标网站">{{ currentTemplate.websiteUrl }}</el-descriptions-item>
+        <el-descriptions-item label="注册接口">{{ currentTemplate.registerApi }}</el-descriptions-item>
+        <el-descriptions-item label="请求方法">{{ currentTemplate.method }}</el-descriptions-item>
+        <el-descriptions-item label="用户名字段">{{ currentTemplate.usernameField }}</el-descriptions-item>
+        <el-descriptions-item label="密码字段">{{ currentTemplate.passwordField }}</el-descriptions-item>
+        <el-descriptions-item label="默认密码">{{ currentTemplate.defaultPassword }}</el-descriptions-item>
+        <el-descriptions-item label="加密类型">{{ currentTemplate.encryptionType || 'NONE' }}</el-descriptions-item>
+        <el-descriptions-item label="RSA密钥接口" :span="2">{{ currentTemplate.rsaKeyApi || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="加密请求头">{{ currentTemplate.encryptionHeader || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="数据包装字段">{{ currentTemplate.valueFieldName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="额外参数" :span="2">
+          <pre v-if="currentTemplate.extraParams" style="margin:0; font-size:12px">{{ currentTemplate.extraParams }}</pre>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="关键逻辑备注" :span="2">
+          <el-text v-if="currentTemplate.notes" type="warning">{{ currentTemplate.notes }}</el-text>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">{{ formatTime(currentTemplate.createTime) }}</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Tickets, Memo, Upload, UploadFilled, Document, StarFilled } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const queryParams = reactive({
@@ -289,22 +531,31 @@ const submitLoading = ref(false)
 const activeTab = ref('basic')
 const currentStep = ref(0)
 const registerFormRef = ref(null)
+const route = useRoute()
+const router = useRouter()
+const goToDraft = () => {
+  router.push({ path: '/business/draft' })
+}
 
 const registerForm = reactive({
   taskName: '',
   websiteUrl: '',
   registerApi: '',
-  method: 'PUT',
+  method: 'POST',
   usernameField: 'username',
   passwordField: 'password',
-  defaultPassword: '133adb',
+  defaultPassword: '',
   extraParams: '',
-  encryptionType: 'DES_RSA',
-  rsaKeyApi: '/wps/session/key/rsa',
+  encryptionType: 'NONE',
+  rsaKeyApi: '',
   rsaTsParam: 't',
-  encryptionHeader: 'encryption',
-  valueFieldName: 'value',
-  dupMsgSubstring: 'Ang username na ito ay ginamit na ng ibang user',
+  encryptionHeader: '',
+  valueFieldName: '',
+  dupMsgSubstring: '',
+  md5Salt: '',
+  md5Fields: ['password'],
+  successCheckType: 'duplicate',
+  successMessage: '',
   useProxy: false,
   proxyPoolId: null,
   concurrency: 5,
@@ -328,6 +579,136 @@ const registerRules = {
 
 const proxyPools = ref([])
 const registerResults = ref([])
+const showTemplateDialog = ref(false)
+const showDraftDialog = ref(false)
+const showUploadDialog = ref(false)
+const uploadLoading = ref(false)
+const uploadRef = ref(null)
+const uploadForm = reactive({
+  draftName: '',
+  websiteUrl: ''
+})
+const templateList = ref([])
+const draftList = ref([])
+
+const fetchDraftList = async () => {
+  try {
+    const res = await request.get('/business/draft/list', { params: { pageNum: 1, pageSize: 100 } })
+    draftList.value = res.data?.records || []
+  } catch (error) {
+    console.error('获取草稿列表失败', error)
+  }
+}
+
+const handleScriptUpload = async (file) => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('draftName', file.name)
+    formData.append('websiteUrl', registerForm.websiteUrl || '')
+    formData.append('description', '自动上传脚本')
+    await request.post('/business/draft/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    ElMessage.success('脚本已上传到草稿箱')
+    fetchDraftList()
+  } catch (error) {
+    ElMessage.error(error.message || '上传失败')
+  }
+  return false
+}
+
+const submitUpload = async () => {
+  if (!uploadForm.websiteUrl) {
+    ElMessage.warning('请输入目标站URL')
+    return
+  }
+  if (!uploadRef.value || !uploadRef.value.uploadFiles || uploadRef.value.uploadFiles.length === 0) {
+    ElMessage.warning('请选择脚本文件')
+    return
+  }
+  uploadLoading.value = true
+  try {
+    const fileObj = uploadRef.value.uploadFiles[0]
+    const formData = new FormData()
+    formData.append('file', fileObj.raw)
+    formData.append('draftName', uploadForm.draftName || fileObj.name)
+    formData.append('websiteUrl', uploadForm.websiteUrl)
+    formData.append('description', '手动上传脚本')
+    const res = await request.post('/business/draft/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    if (res.code === 200) {
+      ElMessage.success(res.message || '上传成功')
+      showUploadDialog.value = false
+      uploadForm.draftName = ''
+      uploadForm.websiteUrl = ''
+      fetchDraftList()
+    } else {
+      ElMessage.error(res.message || '上传失败')
+    }
+  } catch (e) {
+    ElMessage.error(e.message || '上传失败')
+  } finally {
+    uploadLoading.value = false
+  }
+}
+
+const handleTestDraft = async (draft) => {
+  try {
+    const res = await request.post(`/business/draft/test/${draft.id}`)
+    const data = res.data || {}
+    draft.testResult = data.success ? 1 : 2
+    draft.testToken = data.token || null
+    if (draft.testResult === 1 && draft.testToken) {
+      ElMessage.success('测试成功，检测到token')
+    } else {
+      ElMessage.info('测试完成，未检测到token')
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '测试失败')
+  }
+}
+
+const handleSaveDraftToTemplate = async (draft) => {
+  try {
+    const templateName = `${draft.draftName}_模板`
+    await request.post('/business/register/template/add-from-draft', { draftId: draft.id, templateName })
+    ElMessage.success('已保存为模板')
+    fetchTemplateList()
+  } catch (error) {
+    ElMessage.error(error.message || '保存模板失败')
+  }
+}
+
+const handleDeleteDraft = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定删除该草稿吗？', '提示', { type: 'warning' })
+    await request.post(`/business/draft/delete/${id}`)
+    ElMessage.success('删除成功')
+    fetchDraftList()
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const handleClearDrafts = async () => {
+  try {
+    if (!draftList.value.length) return
+    await ElMessageBox.confirm('确定清空所有草稿吗？', '提示', { type: 'warning' })
+    for (const d of draftList.value) {
+      await request.post(`/business/draft/delete/${d.id}`)
+    }
+    ElMessage.success('已清空草稿箱')
+    fetchDraftList()
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('清空失败')
+  }
+}
+const showAddTemplateDialog = ref(false)
+const addTemplateLoading = ref(false)
+const addTemplateForm = reactive({ templateName: '', taskId: null })
+const currentTemplate = ref(null)
+const showTemplateDetailDialog = ref(false)
+const selectedTemplateId = ref(null)
+const templateLoaded = ref(false)
+const loadedTemplateName = ref('')
 let timer = null
 
 const fetchData = async () => {
@@ -395,11 +776,12 @@ const handleStart = async (row) => {
 
 const handlePause = async (row) => {
   try {
+    await ElMessageBox.confirm('确定要暂停该任务吗?', '提示', { type: 'warning' })
     await request.post(`/business/register/pause/${row.id}`)
     ElMessage.success('任务已暂停')
     fetchData()
   } catch (error) {
-    ElMessage.error('暂停失败')
+    if (error !== 'cancel') ElMessage.error(error.message || '暂停失败')
   }
 }
 
@@ -409,11 +791,22 @@ const handleResume = async (row) => {
     ElMessage.success('任务已继续')
     fetchData()
   } catch (error) {
-    ElMessage.error('继续失败')
+    ElMessage.error(error.message || '继续失败')
   }
 }
 
-const handleViewDetail = async (row) => {
+const viewTemplateDetail = async (row) => {
+  try {
+    const res = await request.get(`/business/register/template/${row.id}`)
+    currentTemplate.value = res.data
+    showTemplateDetailDialog.value = true
+  } catch (error) {
+    ElMessage.error('获取模板详情失败')
+  }
+}
+
+
+  const handleViewDetail = async (row) => {
   try {
     const res = await request.get(`/business/register/${row.id}`)
     currentRow.value = res.data
@@ -499,21 +892,28 @@ const formatTime = (timeStr) => {
 
 const resetForm = () => {
   currentStep.value = 0
+  templateLoaded.value = false
+  selectedTemplateId.value = null
+  loadedTemplateName.value = ''
   Object.assign(registerForm, {
     taskName: '',
     websiteUrl: '',
     registerApi: '',
-    method: 'PUT',
+    method: 'POST',
     usernameField: 'username',
     passwordField: 'password',
-    defaultPassword: '133adb',
+    defaultPassword: '',
     extraParams: '',
-    encryptionType: 'DES_RSA',
-    rsaKeyApi: '/wps/session/key/rsa',
+    encryptionType: 'NONE',
+    rsaKeyApi: '',
     rsaTsParam: 't',
-    encryptionHeader: 'encryption',
-    valueFieldName: 'value',
-    dupMsgSubstring: 'Ang username na ito ay ginamit na ng ibang user',
+    encryptionHeader: '',
+    valueFieldName: '',
+    dupMsgSubstring: '',
+    md5Salt: '',
+    md5Fields: ['password'],
+    successCheckType: 'duplicate',
+    successMessage: '',
     useProxy: false,
     proxyPoolId: null,
     concurrency: 5,
@@ -524,12 +924,138 @@ const resetForm = () => {
   registerFormRef.value?.clearValidate()
 }
 
+const fetchTemplateList = async () => {
+  try {
+    const res = await request.get('/business/register/template/list')
+    templateList.value = res.data || []
+  } catch (error) {
+    console.error('获取模板列表失败', error)
+  }
+}
+
+const handleAddToTemplate = (row) => {
+  addTemplateForm.taskId = row.id
+  addTemplateForm.templateName = row.taskName + '_模板'
+  showAddTemplateDialog.value = true
+}
+
+const submitAddTemplate = async () => {
+  if (!addTemplateForm.templateName) {
+    ElMessage.warning('请输入模板名称')
+    return
+  }
+  addTemplateLoading.value = true
+  try {
+    await request.post(`/business/register/template/add-from-task/${addTemplateForm.taskId}`, {
+      templateName: addTemplateForm.templateName
+    })
+    ElMessage.success('模板已保存')
+    showAddTemplateDialog.value = false
+    fetchTemplateList()
+  } catch (error) {
+    ElMessage.error(error.message || '保存模板失败')
+  } finally {
+    addTemplateLoading.value = false
+  }
+}
+
+const loadTemplate = async () => {
+  if (!selectedTemplateId.value) return
+  try {
+    const res = await request.get(`/business/register/template/${selectedTemplateId.value}`)
+    const t = res.data
+    if (!t) return
+    Object.assign(registerForm, {
+      websiteUrl: t.websiteUrl || '',
+      registerApi: t.registerApi || '',
+      method: t.method || 'PUT',
+      usernameField: t.usernameField || 'username',
+      passwordField: t.passwordField || 'password',
+      defaultPassword: t.defaultPassword || '133adb',
+      extraParams: t.extraParams || '',
+      encryptionType: t.encryptionType || 'DES_RSA',
+      rsaKeyApi: t.rsaKeyApi || '/wps/session/key/rsa',
+      rsaTsParam: t.rsaTsParam || 't',
+      encryptionHeader: t.encryptionHeader || 'encryption',
+      valueFieldName: t.valueFieldName || 'value'
+    })
+    templateLoaded.value = true
+    loadedTemplateName.value = t.templateName
+    ElMessage.success(`已加载模板：${t.templateName}`)
+  } catch (error) {
+    ElMessage.error('加载模板失败')
+  }
+}
+
+const clearTemplate = () => {
+  templateLoaded.value = false
+  selectedTemplateId.value = null
+  loadedTemplateName.value = ''
+  ElMessage.info('已清除模板')
+}
+
+const useTemplate = (row) => {
+  selectedTemplateId.value = row.id
+  loadTemplate()
+  showTemplateDialog.value = false
+  showCreateDialog.value = true
+}
+
+const deleteTemplate = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要删除该模板吗？', '提示', { type: 'warning' })
+    await request.post(`/business/register/template/delete/${row.id}`)
+    ElMessage.success('删除成功')
+    fetchTemplateList()
+  } catch (error) {
+    if (error !== 'cancel') ElMessage.error('删除失败')
+  }
+}
+
+const hasTemplateFor = (url) => {
+  return templateList.value && templateList.value.some(t => t.websiteUrl === url)
+}
+
+// 从网站分析结果自动填充表单
+const loadFromAnalysisResult = async () => {
+  const analysisId = route.query.analysisId
+  if (!analysisId) return
+  
+  try {
+    const res = await request.get(`/business/analysis/register/result/${analysisId}`)
+    const data = res.data
+    if (!data) return
+    
+    // 自动填充表单
+    Object.assign(registerForm, {
+      taskName: `${data.websiteUrl}_注册任务`,
+      websiteUrl: data.websiteUrl || '',
+      registerApi: data.registerApi || '',
+      method: data.method || 'POST',
+      usernameField: data.usernameField || 'username',
+      passwordField: data.passwordField || 'password',
+      encryptionType: data.encryptionType || 'NONE',
+      rsaKeyApi: data.rsaKeyApi || '',
+      encryptionHeader: data.encryptionHeader || '',
+      valueFieldName: data.valueFieldName || ''
+    })
+    
+    // 自动打开新建对话框
+    showCreateDialog.value = true
+    ElMessage.success('已自动填充网站分析结果')
+  } catch (error) {
+    console.error('加载分析结果失败', error)
+  }
+}
+
 onMounted(() => {
   fetchData()
   fetchProxyPools()
+  fetchTemplateList()
+  fetchDraftList()
+  loadFromAnalysisResult()
   timer = setInterval(() => { if (document.visibilityState === 'visible') fetchData() }, 10000)
 })
-
 onUnmounted(() => {
   if (timer) clearInterval(timer)
 })
@@ -542,4 +1068,5 @@ onUnmounted(() => {
 .form-content { min-height: 300px; margin-top: 20px; }
 .form-tip { font-size: 12px; color: #909399; margin-top: 5px; }
 .dialog-footer { display: flex; justify-content: center; gap: 10px; }
+.upload-card{min-height:200px}.card-header{display:flex;align-items:center;gap:8px}.script-upload{width:100%}.draft-list{display:flex;flex-direction:column;gap:12px}.draft-item{display:flex;justify-content:space-between;align-items:center;border-bottom:1px dashed #ebeef5;padding-bottom:8px}.draft-name{font-weight:500}.draft-meta{font-size:12px;color:#909399}.draft-actions{display:flex;gap:8px}.template-list{display:flex;flex-direction:column;gap:12px}.template-item{display:flex;justify-content:space-between;align-items:center}
 </style>

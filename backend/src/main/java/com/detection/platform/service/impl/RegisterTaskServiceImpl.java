@@ -281,7 +281,10 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                 registerTaskMapper.updateById(task);
 
                 for (int i = 0; i < totalCount; i++) {
+                    // 每次循环检查最新的任务状态
+                    task = registerTaskMapper.selectById(taskId);
                     if (task.getStatus() == 4) { // 已暂停
+                        log.info("任务已暂停, taskId={}, 当前进度={}/{}", taskId, i, totalCount);
                         break;
                     }
 
@@ -641,13 +644,27 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
 
     @Override
     public Boolean deleteTask(Long id) {
-        RegisterTask task = getTaskById(id);
+        log.info("开始删除注册任务, id={}", id);
+        
+        RegisterTask task = registerTaskMapper.selectById(id);
+        if (task == null) {
+            log.warn("任务不存在, id={}", id);
+            throw new BusinessException("任务不存在");
+        }
+        
+        log.info("任务信息: taskName={}, status={}", task.getTaskName(), task.getStatus());
         
         if (task.getStatus() == 2) {
-            throw new BusinessException("执行中的任务无法删除");
+            log.warn("执行中的任务无法删除, id={}, status={}", id, task.getStatus());
+            throw new BusinessException("执行中的任务无法删除，请先暂停任务");
         }
         
         int rows = registerTaskMapper.deleteById(id);
+        log.info("删除结果: rows={}", rows);
+        
+        // 清理结果缓存
+        taskResultsStore.remove(id);
+        
         return rows > 0;
     }
 

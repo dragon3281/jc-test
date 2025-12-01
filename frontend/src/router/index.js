@@ -72,9 +72,19 @@ const routes = [
         children: [
           {
             path: '/business/analysis',
-            name: 'BusinessAnalysis',
-            component: () => import('@/views/business/Analysis.vue'),
-            meta: { title: '网站分析' }
+            redirect: '/business/analysis-register'
+          },
+          {
+            path: '/business/analysis-register',
+            name: 'BusinessAnalysisRegister',
+            component: () => import('@/views/business/AnalysisRegister.vue'),
+            meta: { title: '自动化注册分析' }
+          },
+          {
+            path: '/business/analysis-phone',
+            name: 'BusinessAnalysisPhone',
+            component: () => import('@/views/business/AnalysisPhone.vue'),
+            meta: { title: '号码检测分析' }
           },
           {
             path: '/business/register',

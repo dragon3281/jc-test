@@ -7,7 +7,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('自动化注册任务测试', () => {
   let taskId;
-  const baseURL = process.env.BASE_URL || 'http://localhost:5173';
+  const baseURL = process.env.BASE_URL || 'http://localhost:3000';
   const apiURL = process.env.API_URL || 'http://localhost:8080';
 
   test.beforeEach(async ({ page }) => {
@@ -25,11 +25,11 @@ test.describe('自动化注册任务测试', () => {
     console.log('\n========== 测试: 创建DES+RSA加密注册任务 ==========');
     
     // 1. 导航到注册任务页面
-    await page.goto(`${baseURL}/business/register-task`);
+    await page.goto(`${baseURL}/business/register`);
     await page.waitForLoadState('networkidle');
     
     // 2. 点击创建任务按钮
-    await page.click('button:has-text("创建任务")');
+    await page.click('button:has-text("新建注册任务")');
     await page.waitForSelector('.el-dialog', { timeout: 5000 });
     
     // 3. 填写任务基本信息
@@ -39,26 +39,25 @@ test.describe('自动化注册任务测试', () => {
     await page.fill('input[placeholder*="注册接口"]', '/wps/member/register');
     
     // 选择请求方法为 PUT
-    await page.click('.el-select:has-text("请求方法")');
-    await page.click('.el-select-dropdown__item:has-text("PUT")');
+    await page.click('label:has-text("PUT")');
     
     // 4. 填写字段映射
     await page.fill('input[placeholder*="用户名字段"]', 'username');
     await page.fill('input[placeholder*="密码字段"]', 'password');
     await page.fill('input[placeholder*="默认密码"]', '133adb');
     
-    // 5. 设置账户数量
-    await page.fill('input[placeholder*="创建数量"]', '3');
-    
+    // 5. 设置账户数量（将在执行配置步骤填写）
     // 6. 配置加密参数 - 选择 DES_RSA
-    await page.click('.el-select:has-text("加密类型")');
-    await page.click('.el-select-dropdown__item:has-text("DES+RSA")');
+    await page.click('button:has-text("下一步")');
+    await page.click('label:has-text("DES+RSA双重加密")');
     
     // 填写加密相关配置
     await page.fill('input[placeholder*="RSA密钥接口"]', '/wps/session/key/rsa');
     await page.fill('input[placeholder*="时间戳参数"]', 't');
     await page.fill('input[placeholder*="加密请求头"]', 'encryption');
     await page.fill('input[placeholder*="数据包装字段"]', 'value');
+    await page.click('button:has-text("下一步")');
+    await page.fill('input[placeholder*="创建数量"]', '3');
     
     // 7. 填写额外参数（JSON格式）
     const extraParams = {
@@ -96,7 +95,7 @@ test.describe('自动化注册任务测试', () => {
     
     // 8. 提交创建任务
     console.log('提交任务创建请求...');
-    await page.click('button:has-text("确定")');
+    await page.click('button:has-text("提交并启动")');
     
     // 等待成功提示
     await expect(page.locator('.el-message--success')).toBeVisible({ timeout: 5000 });
@@ -118,12 +117,12 @@ test.describe('自动化注册任务测试', () => {
     
     // 11. 启动任务
     console.log('\n========== 启动注册任务 ==========');
-    await page.click(`button[data-task-id="${taskId}"]:has-text("启动")`);
-    await page.waitForTimeout(500);
+    // 已自动启动，无需点击启动按钮
+    // 已跳过等待
     
-    // 确认启动
-    await page.click('.el-message-box button:has-text("确定")');
-    console.log('✅ 任务已启动');
+    // 已自动启动，跳过确认
+    // 已自动启动，跳过确认
+    // 已自动启动，无需额外日志
     
     // 12. 等待任务执行（最多等待30秒）
     console.log('等待任务执行...');
@@ -179,6 +178,38 @@ test.describe('自动化注册任务测试', () => {
     });
     
     console.log('\n✅ 所有验证通过！');
+  });
+
+  test('脚本上传并测试', async ({ page }) => {
+    console.log('\n========== 测试: 脚本上传并测试 ==========');
+    await page.goto(`${baseURL}/business/register`);
+    await page.click('button:has-text("脚本上传")');
+    await page.waitForURL(/\/business\/draft/);
+    await page.waitForSelector('.el-dialog:has-text("上传测试脚本")', { timeout: 5000 });
+
+    // 填写上传表单
+    await page.fill('input[placeholder*="草稿名称"]', 'E2E脚本-DES_RSA');
+    await page.fill('input[placeholder*="https://www.example.com"]', 'https://www.wwwtk666.com');
+
+    // 选择加密类型为 DES+RSA
+    await page.click('div.el-form-item:has-text("加密类型") .el-select');
+    await page.click('.el-select-dropdown__item:has-text("DES+RSA")');
+
+    const pyScript = "# Test Python Script\ndef encrypt(data):\n    return data\ndef decrypt(data):\n    return data";
+    await page.fill('textarea[placeholder*="请粘贴Python脚本内容"]', pyScript);
+
+    // 上传并测试
+    await page.click('button:has-text("上传并测试")');
+
+    // 如果弹出保存为模板的确认框，则点击稍后保存
+    await page.waitForTimeout(1000);
+    const confirmVisible = await page.locator('.el-message-box').isVisible();
+    if (confirmVisible) {
+      await page.click('button:has-text("稍后保存")');
+    }
+
+    // 期待出现信息提示
+    await expect(page.locator('.el-message--info')).toBeVisible({ timeout: 5000 });
   });
 
   test('验证DES加密逻辑', async ({ request }) => {
