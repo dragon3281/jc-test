@@ -43,3 +43,5 @@ LJ-project/
 
 # Qoder配置
 .qoder/
+backend/BOOT-INF/
+test/node_modules/
