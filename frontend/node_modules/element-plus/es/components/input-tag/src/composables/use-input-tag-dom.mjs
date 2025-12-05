@@ -1,5 +1,7 @@
-import { useAttrs, useSlots, computed } from 'vue';
+import { useAttrs, useSlots, ref, computed, reactive } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
 import { useNamespace } from '../../../../hooks/use-namespace/index.mjs';
+import { MINIMUM_INPUT_WIDTH } from '../../../../constants/form.mjs';
 
 function useInputTagDom({
   props,
@@ -16,6 +18,8 @@ function useInputTagDom({
   const slots = useSlots();
   const ns = useNamespace("input-tag");
   const nsInput = useNamespace("input");
+  const collapseItemRef = ref();
+  const innerRef = ref();
   const containerKls = computed(() => [
     ns.b(),
     ns.is("focused", isFocused.value),
@@ -42,6 +46,32 @@ function useInputTagDom({
   const showSuffix = computed(() => {
     return slots.suffix || showClear.value || validateState.value && validateIcon.value && needStatusIcon.value;
   });
+  const states = reactive({
+    innerWidth: 0,
+    collapseItemWidth: 0
+  });
+  const getGapWidth = () => {
+    if (!innerRef.value)
+      return 0;
+    const style = window.getComputedStyle(innerRef.value);
+    return Number.parseFloat(style.gap || "6px");
+  };
+  const resetInnerWidth = () => {
+    states.innerWidth = Number.parseFloat(window.getComputedStyle(innerRef.value).width);
+  };
+  const resetCollapseItemWidth = () => {
+    states.collapseItemWidth = collapseItemRef.value.getBoundingClientRect().width;
+  };
+  const tagStyle = computed(() => {
+    if (!props.collapseTags)
+      return {};
+    const gapWidth = getGapWidth();
+    const inputSlotWidth = gapWidth + MINIMUM_INPUT_WIDTH;
+    const maxWidth = collapseItemRef.value && props.maxCollapseTags === 1 ? states.innerWidth - states.collapseItemWidth - gapWidth - inputSlotWidth : states.innerWidth - inputSlotWidth;
+    return { maxWidth: `${Math.max(maxWidth, 0)}px` };
+  });
+  useResizeObserver(innerRef, resetInnerWidth);
+  useResizeObserver(collapseItemRef, resetCollapseItemWidth);
   return {
     ns,
     nsInput,
@@ -49,7 +79,10 @@ function useInputTagDom({
     containerStyle,
     innerKls,
     showClear,
-    showSuffix
+    showSuffix,
+    tagStyle,
+    collapseItemRef,
+    innerRef
   };
 }
 

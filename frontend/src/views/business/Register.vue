@@ -593,10 +593,14 @@ const draftList = ref([])
 
 const fetchDraftList = async () => {
   try {
-    const res = await request.get('/business/draft/list', { params: { pageNum: 1, pageSize: 100 } })
+    const res = await request.get('/business/draft/list', { 
+      params: { pageNum: 1, pageSize: 100 },
+      headers: { 'X-Silent-Error': 'true' } // 静默失败，不显示错误提示
+    })
     draftList.value = res.data?.records || []
   } catch (error) {
-    console.error('获取草稿列表失败', error)
+    // 草稿箱功能暂未实现，静默失败
+    draftList.value = []
   }
 }
 
@@ -926,10 +930,13 @@ const resetForm = () => {
 
 const fetchTemplateList = async () => {
   try {
-    const res = await request.get('/business/register/template/list')
+    const res = await request.get('/business/register/template/list', {
+      headers: { 'X-Silent-Error': 'true' } // 静默失败，不显示错误提示
+    })
     templateList.value = res.data || []
   } catch (error) {
-    console.error('获取模板列表失败', error)
+    // 模板功能暂未实现，静默失败
+    templateList.value = []
   }
 }
 
@@ -1016,35 +1023,60 @@ const hasTemplateFor = (url) => {
   return templateList.value && templateList.value.some(t => t.websiteUrl === url)
 }
 
-// 从网站分析结果自动填充表单
+// 从网站分析结果自动填充表单（一键填充）
 const loadFromAnalysisResult = async () => {
   const analysisId = route.query.analysisId
   if (!analysisId) return
   
   try {
-    const res = await request.get(`/business/analysis/register/result/${analysisId}`)
-    const data = res.data
-    if (!data) return
+    console.log('[Register] 从分析结果一键填充, analysisId=', analysisId)
+    const res = await request.get(`/business/analysis/register/to-task/${analysisId}`)
+    const config = res.data
+    if (!config) {
+      ElMessage.error('分析结果为空')
+      return
+    }
     
-    // 自动填充表单
+    console.log('[Register] 获取到配置:', config)
+    
+    // 完整填充所有字段（基础+加密+执行配置）
     Object.assign(registerForm, {
-      taskName: `${data.websiteUrl}_注册任务`,
-      websiteUrl: data.websiteUrl || '',
-      registerApi: data.registerApi || '',
-      method: data.method || 'POST',
-      usernameField: data.usernameField || 'username',
-      passwordField: data.passwordField || 'password',
-      encryptionType: data.encryptionType || 'NONE',
-      rsaKeyApi: data.rsaKeyApi || '',
-      encryptionHeader: data.encryptionHeader || '',
-      valueFieldName: data.valueFieldName || ''
+      taskName: config.taskName || '',
+      websiteUrl: config.websiteUrl || '',
+      registerApi: config.registerApi || '',
+      method: config.method || 'POST',
+      usernameField: config.usernameField || 'username',
+      passwordField: config.passwordField || 'password',
+      defaultPassword: config.defaultPassword || '133adb',
+      extraParams: config.extraParams || '',
+      
+      // 加密配置
+      encryptionType: config.encryptionType || 'NONE',
+      rsaKeyApi: config.rsaKeyApi || '/wps/session/key/rsa',
+      rsaTsParam: config.rsaTsParam || 't',
+      encryptionHeader: config.encryptionHeader || 'Encryption',
+      valueFieldName: config.valueFieldName || 'value',
+      dupMsgSubstring: config.dupMsgSubstring || '',
+      
+      // 执行配置
+      accountCount: config.accountCount || 10,
+      concurrency: config.concurrency || 5,
+      useProxy: config.useProxy || false,
+      proxyPoolId: config.proxyPoolId || null,
+      needPhone: config.needPhone || false,
+      needCaptcha: config.needCaptcha || false,
+      needToken: config.needToken || false,
+      autoRetry: config.autoRetry || false,
+      retryTimes: config.retryTimes || 0
     })
     
     // 自动打开新建对话框
     showCreateDialog.value = true
-    ElMessage.success('已自动填充网站分析结果')
+    ElMessage.success('✨ 已根据分析结果自动填充，可按需修改')
+    console.log('[Register] 一键填充完成')
   } catch (error) {
-    console.error('加载分析结果失败', error)
+    console.error('[Register] 加载分析结果失败:', error)
+    ElMessage.error('加载分析结果失败: ' + (error.message || '未知错误'))
   }
 }
 

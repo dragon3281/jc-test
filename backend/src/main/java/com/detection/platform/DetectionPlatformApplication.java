@@ -17,7 +17,7 @@ import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServic
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableScheduling
 @EnableAsync
-@MapperScan("com.detection.platform.dao")
+@MapperScan({"com.detection.platform.dao", "com.detection.platform.mapper"})
 public class DetectionPlatformApplication {
 
     public static void main(String[] args) {

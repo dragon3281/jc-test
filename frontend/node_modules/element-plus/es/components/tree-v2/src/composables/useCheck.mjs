@@ -19,17 +19,21 @@ function useCheck(props, tree) {
     const { levelTreeNodeMap, maxLevel } = tree.value;
     const checkedKeySet = checkedKeys.value;
     const indeterminateKeySet = /* @__PURE__ */ new Set();
-    for (let level = maxLevel - 1; level >= 1; --level) {
+    for (let level = maxLevel; level >= 1; --level) {
       const nodes = levelTreeNodeMap.get(level);
       if (!nodes)
         continue;
       nodes.forEach((node) => {
         const children = node.children;
+        let isEffectivelyChecked = !node.isLeaf || node.disabled || checkedKeySet.has(node.key);
         if (children) {
           let allChecked = true;
           let hasChecked = false;
           for (const childNode of children) {
             const key = childNode.key;
+            if (!childNode.isEffectivelyChecked) {
+              isEffectivelyChecked = false;
+            }
             if (checkedKeySet.has(key)) {
               hasChecked = true;
             } else if (indeterminateKeySet.has(key)) {
@@ -50,6 +54,7 @@ function useCheck(props, tree) {
             indeterminateKeySet.delete(node.key);
           }
         }
+        node.isEffectivelyChecked = isEffectivelyChecked;
       });
     }
     indeterminateKeys.value = indeterminateKeySet;
@@ -58,12 +63,16 @@ function useCheck(props, tree) {
   const isIndeterminate = (node) => indeterminateKeys.value.has(node.key);
   const toggleCheckbox = (node, isChecked2, nodeClick = true, immediateUpdate = true) => {
     const checkedKeySet = checkedKeys.value;
+    const children = node.children;
+    if (!props.checkStrictly && nodeClick && (children == null ? void 0 : children.length)) {
+      isChecked2 = children.some((node2) => !node2.isEffectivelyChecked);
+    }
     const toggle = (node2, checked) => {
       checkedKeySet[checked ? SetOperationEnum.ADD : SetOperationEnum.DELETE](node2.key);
-      const children = node2.children;
-      if (!props.checkStrictly && children) {
-        children.forEach((childNode) => {
-          if (!childNode.disabled) {
+      const children2 = node2.children;
+      if (!props.checkStrictly && children2) {
+        children2.forEach((childNode) => {
+          if (!childNode.disabled || childNode.children) {
             toggle(childNode, checked);
           }
         });

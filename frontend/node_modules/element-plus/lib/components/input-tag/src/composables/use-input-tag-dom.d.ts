@@ -54,5 +54,12 @@ export declare function useInputTagDom({ props, isFocused, hovering, disabled, i
     innerKls: ComputedRef<string[]>;
     showClear: ComputedRef<boolean | "" | 0 | undefined>;
     showSuffix: ComputedRef<boolean | "" | import("vue").Slot>;
+    tagStyle: ComputedRef<{
+        maxWidth?: undefined;
+    } | {
+        maxWidth: string;
+    }>;
+    collapseItemRef: Ref<HTMLElement | undefined>;
+    innerRef: Ref<HTMLElement | undefined>;
 };
 export {};

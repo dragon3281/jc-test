@@ -75,6 +75,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/login", "/api/user/test-password", "/user/login", "/user/test-password").permitAll()
                         // WebSocket端点允许访问
                         .requestMatchers("/ws/**", "/terminal/**").permitAll()
+                        // POST模板管理接口开放（用于测试）
+                        .requestMatchers("/template/**").permitAll()
                         // 业务接口开放（包括注册模板管理）
                         .requestMatchers("/business/**").permitAll()
                         // 其他所有请求都需要认证
@@ -170,6 +172,7 @@ public class SecurityConfig {
             return uri.equals("/user/login") || uri.equals("/user/test-password") || 
                    uri.equals("/api/user/login") || uri.equals("/api/user/test-password") ||
                    uri.startsWith("/ws/") || uri.startsWith("/terminal/") ||
+                   uri.startsWith("/template/") ||  // POST模板管理接口
                    uri.startsWith("/business/register/template/delete/") ||
                    uri.startsWith("/business/") || uri.startsWith("/api/business/");
         }

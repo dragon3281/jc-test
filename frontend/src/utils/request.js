@@ -29,7 +29,12 @@ request.interceptors.response.use(
     
     // 根据响应码处理
     if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
+      // 检查是否为静默请求（不显示错误提示）
+      const isSilent = response.config.headers['X-Silent-Error'] === 'true'
+      
+      if (!isSilent) {
+        ElMessage.error(res.message || '请求失败')
+      }
       
       // 401 未授权,跳转登录
       if (res.code === 401) {
@@ -47,6 +52,9 @@ request.interceptors.response.use(
     return res
   },
   error => {
+    // 检查是否为静默请求（不显示错误提示）
+    const isSilent = error.config?.headers?.['X-Silent-Error'] === 'true'
+    
     // 处理HTTP状态码错误
     if (error.response) {
       const status = error.response.status
@@ -59,19 +67,21 @@ request.interceptors.response.use(
         setTimeout(() => {
           window.location.href = '/login?expired=true'
         }, 1500)
-      } else if (status === 403) {
-        ElMessage.error('没有权限访问该资源')
-      } else if (status === 404) {
-        ElMessage.error('请求的资源不存在')
-      } else if (status === 500) {
-        ElMessage.error('服务器内部错误')
-      } else {
-        ElMessage.error(error.response.data?.message || `请求失败（${status}）`)
+      } else if (!isSilent) {
+        if (status === 403) {
+          ElMessage.error('没有权限访问该资源')
+        } else if (status === 404) {
+          ElMessage.error('请求的资源不存在')
+        } else if (status === 500) {
+          ElMessage.error('服务器内部错误')
+        } else {
+          ElMessage.error(error.response.data?.message || `请求失败（${status}）`)
+        }
       }
-    } else if (error.request) {
+    } else if (error.request && !isSilent) {
       // 请求已发出但没有收到响应
       ElMessage.error('网络连接失败，请检查网络')
-    } else {
+    } else if (!isSilent) {
       // 设置请求时发生了错误
       ElMessage.error(error.message || '请求失败')
     }

@@ -123,6 +123,9 @@ CREATE TABLE `t_post_template` (
   `request_body` JSON NULL COMMENT '请求体模板',
   `success_rule` JSON NOT NULL COMMENT '成功判断规则',
   `fail_rule` JSON NOT NULL COMMENT '失败判断规则',
+  `duplicate_msg` VARCHAR(255) NULL DEFAULT NULL COMMENT '重复手机号关键字(如:customer_mobile_no_duplicated)',
+  `token_header` VARCHAR(100) NULL DEFAULT 'Authorization' COMMENT 'Token请求头名称',
+  `phone_field` VARCHAR(100) NULL DEFAULT 'mobile' COMMENT '手机号字段名',
   `enable_proxy` TINYINT(4) NOT NULL DEFAULT 1 COMMENT '是否启用代理:0否,1是',
   `timeout_seconds` INT(11) NOT NULL DEFAULT 30 COMMENT '超时时间(秒)',
   `retry_count` INT(11) NOT NULL DEFAULT 3 COMMENT '重试次数',
@@ -133,6 +136,48 @@ CREATE TABLE `t_post_template` (
   PRIMARY KEY (`id`),
   KEY `idx_target_site` (`target_site`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='POST模板表';
+
+-- ----------------------------
+-- 5-1. 手机号检测任务表
+-- ----------------------------
+DROP TABLE IF EXISTS `t_phone_check_task`;
+CREATE TABLE `t_phone_check_task` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '任务ID',
+  `task_name` VARCHAR(200) NOT NULL COMMENT '任务名称',
+  `template_id` BIGINT(20) NOT NULL COMMENT '模板ID',
+  `token_value` VARCHAR(500) NULL DEFAULT NULL COMMENT 'Token值',
+  `cookie_value` TEXT NULL DEFAULT NULL COMMENT 'Cookie值',
+  `phone_list` LONGTEXT NOT NULL COMMENT '手机号列表(每行一个)',
+  `total_count` INT(11) NOT NULL DEFAULT 0 COMMENT '总数量',
+  `checked_count` INT(11) NOT NULL DEFAULT 0 COMMENT '已检测数量',
+  `duplicate_count` INT(11) NOT NULL DEFAULT 0 COMMENT '重复数量',
+  `task_status` TINYINT(4) NOT NULL DEFAULT 1 COMMENT '任务状态:1待执行,2执行中,3已完成,4已停止',
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `start_time` DATETIME NULL DEFAULT NULL COMMENT '开始时间',
+  `end_time` DATETIME NULL DEFAULT NULL COMMENT '结束时间',
+  `deleted` TINYINT(4) NOT NULL DEFAULT 0 COMMENT '逻辑删除:0未删除,1已删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_template_id` (`template_id`),
+  KEY `idx_status_create_time` (`task_status`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='手机号检测任务表';
+
+-- ----------------------------
+-- 5-2. 手机号检测结果表
+-- ----------------------------
+DROP TABLE IF EXISTS `t_phone_check_result`;
+CREATE TABLE `t_phone_check_result` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '结果ID',
+  `task_id` BIGINT(20) NOT NULL COMMENT '任务ID',
+  `phone_number` VARCHAR(20) NOT NULL COMMENT '手机号',
+  `is_duplicate` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否重复:0未重复,1已重复',
+  `response_code` INT(11) NULL DEFAULT NULL COMMENT '响应状态码',
+  `response_message` TEXT NULL DEFAULT NULL COMMENT '响应消息',
+  `check_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '检测时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_task_id` (`task_id`),
+  KEY `idx_is_duplicate` (`is_duplicate`),
+  KEY `idx_phone_number` (`phone_number`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='手机号检测结果表';
 
 -- ----------------------------
 -- 6. 检测任务表

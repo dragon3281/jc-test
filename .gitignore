@@ -1,0 +1,41 @@
+# 编译输出
+backend/target/
+backend/*.jar
+frontend/dist/
+frontend/node_modules/
+
+# 日志文件
+*.log
+*.log.*
+logs/*.log
+logs/*.gz
+backend/logs/
+backend/app.log
+
+# IDE配置
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.bak
+*.bak2
+*~
+
+# 环境配置
+.env.local
+.env.*.local
+
+# 备份文件
+backups/
+
+# 测试文件
+test-tokens.txt
+test-phones.txt

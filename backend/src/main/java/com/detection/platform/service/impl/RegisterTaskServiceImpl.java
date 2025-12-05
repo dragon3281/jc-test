@@ -251,7 +251,7 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                 String encryptionType = Optional.ofNullable(task.getEncryptionType()).orElse("NONE");
                 String rsaKeyApi = Optional.ofNullable(task.getRsaKeyApi()).orElse("/wps/session/key/rsa");
                 String tsParam = Optional.ofNullable(task.getRsaTsParam()).orElse("t");
-                String encryptionHeader = Optional.ofNullable(task.getEncryptionHeader()).orElse("encryption");
+                String encryptionHeader = Optional.ofNullable(task.getEncryptionHeader()).orElse("Encryption");
                 String valueFieldName = Optional.ofNullable(task.getValueFieldName()).orElse("value");
                 String dupMsg = Optional.ofNullable(task.getDupMsgSubstring()).orElse("Ang username na ito ay ginamit na ng ibang user");
 
@@ -359,13 +359,13 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                     log.info("[Register] 将使用反转后的rnd作为DES密钥: {}", reversedRnd);
                     
                     if ("DES_RSA".equalsIgnoreCase(encryptionType)) {
-                        // DES加密：使用反转的rnd作为密钥
+                        // DES加密：使用原始rnd作为密钥（关键修复！）
                         try {
-                            encryptedValue = desEncryptEcb(plaintextJson, reversedRnd);
+                            encryptedValue = desEncryptEcb(plaintextJson, rnd);
                             log.info("[Register] ✅ DES加密完成");
                             log.info("[Register]    - 明文长度: {} 字节", plaintextJson.length());
-                            log.info("[Register]    - 密钥(反转rnd): {}", reversedRnd);
-                            log.info("[Register]    - 密钥前8字节: {}", reversedRnd.substring(0, Math.min(8, reversedRnd.length())));
+                            log.info("[Register]    - 密钥(原始rnd): {}", rnd);
+                            log.info("[Register]    - 密钥前8字节: {}", rnd.substring(0, Math.min(8, rnd.length())));
                             log.info("[Register]    - DES密文长度: {} 字符", encryptedValue.length());
                             log.info("[Register]    - DES密文前80字符: {}", encryptedValue.substring(0, Math.min(80, encryptedValue.length())));
                         } catch (Exception e) {
@@ -396,9 +396,9 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                         // ⚠️ 关键修复：RSA加密使用【原始rnd】，不是反转的！（参考Python脚本第95行）
                         if (publicKeyStr != null && !publicKeyStr.isEmpty()) {
                             try {
-                                encryptionHeaderValue = rsaEncryptPkcs1(publicKeyStr, rnd);
+                                encryptionHeaderValue = rsaEncryptPkcs1(publicKeyStr, reversedRnd);
                                 log.info("[Register] ✅ RSA加密完成");
-                                log.info("[Register]    - 待加密内容(原始rnd): {}", rnd);
+                                log.info("[Register]    - 待加密内容(反转rnd): {}", reversedRnd);
                                 log.info("[Register]    - RSA密文长度: {} 字符", encryptionHeaderValue.length());
                                 log.info("[Register]    - RSA密文前120字符: {}", encryptionHeaderValue.substring(0, Math.min(120, encryptionHeaderValue.length())));
                                 log.info("[Register]    - RSA密文完整: {}", encryptionHeaderValue);
@@ -437,10 +437,11 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                     log.info("[Register] 请求方法={}, URL={}", method, apiUrl);
 
                     // 额外Header
-                    reqBuilder.header("device", "web");
-                    reqBuilder.header("language", "BN");
-                    reqBuilder.header("merchant", "ck555bdtf3");
-                    log.info("[Register] 添加固定请求头: device=web, language=BN, merchant=ck555bdtf3");
+                    reqBuilder.header("Device", "web");
+                    reqBuilder.header("Language", "BN");
+                    String merchantVal = (task.getWebsiteUrl() != null && task.getWebsiteUrl().contains("ppvip")) ? "ppvipbdtf5" : "ck555bdtf3";
+                    reqBuilder.header("Merchant", merchantVal);
+                    log.info("[Register] 添加固定请求头: device=web, language=BN, merchant={}", merchantVal);
                     
                     for (Map.Entry<String, String> h : headerExtras.entrySet()) {
                         reqBuilder.header(h.getKey(), h.getValue());
@@ -459,6 +460,8 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                             cookieLine.append(c.getKey()).append("=").append(c.getValue());
                         }
                         reqBuilder.header("Cookie", cookieLine.toString());
+                    } else {
+                        reqBuilder.header("Cookie", "SHELL_deviceId=" + java.util.UUID.randomUUID().toString());
                     }
 
                     /* method defined above */
@@ -539,8 +542,8 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                                         String encryptedResponseValue = (String) valueObj;
                                         log.info("[Register] 用户名={} 尝试解密响应value字段，密文长度={}", usedUsername, encryptedResponseValue.length());
                                         try {
-                                            // 使用反转的rnd作为解密密钥（与加密时相同）
-                                            String decryptedValue = desDecryptEcb(encryptedResponseValue, reversedRnd);
+                                            // 使用原始rnd作为解密密钥（与加密时相同）
+                                            String decryptedValue = desDecryptEcb(encryptedResponseValue, rnd);
                                             log.info("[Register] 用户名={} 解密成功，明文内容={}", usedUsername, decryptedValue);
                                             // 解析解密后的JSON
                                             @SuppressWarnings("unchecked")

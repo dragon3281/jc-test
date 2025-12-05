@@ -134,7 +134,9 @@ public class SmartWebAnalyzer {
             log.info("[\u5206\u6790\u7ed3\u679c] RSA\u5bc6\u94a5\u63a5\u53e3: {}", (Object)jsAnalysis.getRsaKeyApi());
             log.info("[\u5206\u6790\u7ed3\u679c] \u52a0\u5bc6\u8bf7\u6c42\u5934\u540d: {}", (Object)jsAnalysis.getEncryptionHeader());
             log.info("[\u5206\u6790\u7ed3\u679c] \u6570\u636e\u5305\u88c5\u5b57\u6bb5\u540d: {}", (Object)jsAnalysis.getValueFieldName());
-            RegisterTestResult testResult = this.simulateRegister(websiteUrl, jsAnalysis.getRegisterApi(), jsAnalysis.getMethod(), jsAnalysis.getRequiredParams(), jsAnalysis.getEncryptionType(), jsAnalysis.getRsaKeyApi(), jsAnalysis.getEncryptionHeader(), jsAnalysis.getValueFieldName());
+            String rsaKey = jsAnalysis.getRsaKeyApi();
+            if (rsaKey == null || rsaKey.isEmpty()) rsaKey = "/wps/session/key/rsa";
+            RegisterTestResult testResult = this.simulateRegister(websiteUrl, jsAnalysis.getRegisterApi(), jsAnalysis.getMethod(), jsAnalysis.getRequiredParams(), jsAnalysis.getEncryptionType(), rsaKey, jsAnalysis.getEncryptionHeader(), jsAnalysis.getValueFieldName());
             result.put("testSuccess", testResult.isSuccess());
             result.put("testMessage", testResult.getMessage());
             result.put("responseBody", testResult.getResponseBody());
@@ -850,8 +852,8 @@ public class SmartWebAnalyzer {
                         log.warn("[TestRegister] \u26a0\ufe0f \u52a0\u5bc6\u7c7b\u578b\u4e3a\u7a7a\uff0c\u9ed8\u8ba4\u4f7f\u7528NONE");
                     }
                     if (encryptionHeaderName == null || encryptionHeaderName.isEmpty()) {
-                        encryptionHeaderName = "encryption";
-                        log.info("[TestRegister] \u52a0\u5bc6\u8bf7\u6c42\u5934\u540d\u9ed8\u8ba4\u4e3a: encryption");
+                        encryptionHeaderName = "Encryption";
+                        log.info("[TestRegister] \u52a0\u5bc6\u8bf7\u6c42\u5934\u540d\u9ed8\u8ba4\u4e3a: Encryption");
                     }
                     if (valueFieldName == null || valueFieldName.isEmpty()) {
                         valueFieldName = "value";
@@ -906,9 +908,9 @@ public class SmartWebAnalyzer {
                         log.info("[TestRegister] \u660e\u6587JSON\u957f\u5ea6: {}", (Object)plaintextJson.length());
                         log.info("[TestRegister] \u660e\u6587JSON\u524d200\u5b57\u7b26: {}", (Object)plaintextJson.substring(0, Math.min(200, plaintextJson.length())));
                         try {
-                            encryptedValue = this.desEncryptEcb(plaintextJson, reversedRnd);
+                            encryptedValue = this.desEncryptEcb(plaintextJson, rnd);
                             log.info("[TestRegister] \u2705 DES\u52a0\u5bc6\u6210\u529f");
-                            log.info("[TestRegister]    - \u5bc6\u94a5: \u53cd\u8f6crnd\u7684\u524d8\u5b57\u8282");
+                            log.info("[TestRegister]    - \u5bc6\u94a5: \u539f\u59cbrnd\u7684\u524d8\u5b57\u8282");
                             log.info("[TestRegister]    - \u5bc6\u6587\u957f\u5ea6: {}", (Object)encryptedValue.length());
                             log.info("[TestRegister]    - \u5bc6\u6587\u524d80\u5b57\u7b26: {}", (Object)encryptedValue.substring(0, Math.min(80, encryptedValue.length())));
                         }
@@ -934,9 +936,9 @@ public class SmartWebAnalyzer {
                                     String publicKeyStr = resp.body().string();
                                     log.info("[TestRegister] \u83b7\u53d6\u5230RSA\u516c\u94a5: {}", (Object)publicKeyStr);
                                     try {
-                                        encryptionHeaderValue = this.rsaEncryptPkcs1(publicKeyStr, rnd);
+                                        encryptionHeaderValue = this.rsaEncryptPkcs1(publicKeyStr, reversedRnd);
                                         log.info("[TestRegister] \u2705 RSA\u52a0\u5bc6\u6210\u529f");
-                                        log.info("[TestRegister]    - \u52a0\u5bc6\u5185\u5bb9: \u539f\u59cbrnd\uff08\u672a\u53cd\u8f6c\uff09");
+                                        log.info("[TestRegister]    - \u52a0\u5bc6\u5185\u5bb9: \u53cd\u8f6crnd");
                                         log.info("[TestRegister]    - \u5bc6\u6587\u957f\u5ea6: {}", (Object)encryptionHeaderValue.length());
                                         log.info("[TestRegister]    - \u5bc6\u6587\u524d120\u5b57\u7b26: {}", (Object)encryptionHeaderValue.substring(0, Math.min(120, encryptionHeaderValue.length())));
                                         break block46;
@@ -983,9 +985,11 @@ public class SmartWebAnalyzer {
                 }
                 log.info("[TestRegister] ========== \u52a0\u5bc6\u6d41\u7a0b\u5b8c\u6210 ==========");
                 Request.Builder reqBuilder = new Request.Builder().url(fullUrl).header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36").header("Accept", "application/json, text/plain, */*").header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8").header("Cache-Control", "no-cache").header("Content-Type", "application/json").header("Origin", baseUrl).header("Referer", baseUrl + "/");
-                reqBuilder.header("device", "web");
-                reqBuilder.header("language", "BN");
-                reqBuilder.header("merchant", "ck555bdtf3");
+                reqBuilder.header("Device", "web");
+                reqBuilder.header("Language", "BN");
+                String merchantVal = baseUrl.contains("ppvip") ? "ppvipbdtf5" : "ck555bdtf3";
+                reqBuilder.header("Merchant", merchantVal);
+                reqBuilder.header("Cookie", "SHELL_deviceId=" + java.util.UUID.randomUUID().toString());
                 if (encryptionHeaderValue != null && !encryptionHeaderValue.isEmpty()) {
                     reqBuilder.header(encryptionHeaderName, encryptionHeaderValue);
                     log.info("[TestRegister] \u2705 \u6dfb\u52a0\u52a0\u5bc6\u8bf7\u6c42\u5934: {}={}", (Object)encryptionHeaderName, (Object)(encryptionHeaderValue.substring(0, Math.min(80, encryptionHeaderValue.length())) + "..."));

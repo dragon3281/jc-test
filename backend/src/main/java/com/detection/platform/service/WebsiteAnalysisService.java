@@ -52,4 +52,11 @@ public interface WebsiteAnalysisService {
      * 获取自动化注册分析结果（用于前端一键填充）
      */
     java.util.Map<String, Object> getRegisterAnalysisResult(Long id);
+    
+    /**
+     * 从分析结果生成注册任务的默认配置（用于一键填充新建注册任务表单）
+     * @param analysisId 分析记录ID
+     * @return 注册任务默认配置Map（可直接用于createTask接口）
+     */
+    java.util.Map<String, Object> buildRegisterTaskConfig(Long analysisId);
 }

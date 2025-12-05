@@ -421,6 +421,16 @@ public class BusinessController {
     }
     
     /**
+     * 从分析结果生成注册任务配置（一键填充到新建注册任务表单）
+     */
+    @GetMapping("/analysis/register/to-task/{analysisId}")
+    public Result<Map<String, Object>> analysisToTaskConfig(@PathVariable Long analysisId) {
+        log.info("[Controller] 从分析结果生成注册任务配置, analysisId={}", analysisId);
+        Map<String, Object> config = websiteAnalysisService.buildRegisterTaskConfig(analysisId);
+        return Result.success("配置生成成功", config);
+    }
+    
+    /**
      * 从草稿保存为模板
      */
     @PostMapping("/register/template/add-from-draft")

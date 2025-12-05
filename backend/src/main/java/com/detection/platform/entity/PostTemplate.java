@@ -55,34 +55,45 @@ public class PostTemplate implements Serializable {
     private String requestBody;
 
     /**
-     * 成功判断规则(JSON格式)
+     * 变量配置(JSON数组格式)
+     * 示例: [{"key":"header.Authorization","location":"header","name":"Authorization","type":"token","placeholder":"{{Authorization}}"}]
      */
-    private String successRule;
+    private String variableConfig;
 
     /**
-     * 失败判断规则(JSON格式)
+     * 重复手机号关键字(如: customer_mobile_no_duplicated)
      */
-    private String failRule;
+    private String duplicateMsg;
 
     /**
-     * 是否启用代理:0否,1是
+     * 重复时的HTTP状态码(默认: 400)
      */
-    private Integer enableProxy;
+    private Integer responseCode;
 
     /**
-     * 超时时间(秒)
+     * 限流关键字(如: TOO_MANY_REQUEST)
      */
-    private Integer timeoutSeconds;
+    private String rateLimitKeyword;
 
     /**
-     * 重试次数
+     * 连续限流触发次数阈值(默认: 5)
      */
-    private Integer retryCount;
+    private Integer maxConsecutiveRateLimit;
 
     /**
-     * 版本号
+     * 触发限流后暂停秒数(默认: 2)
      */
-    private String version;
+    private Integer backoffSeconds;
+
+    /**
+     * 最小并发数(默认: 1)
+     */
+    private Integer minConcurrency;
+
+    /**
+     * 最大并发数(默认: 50)
+     */
+    private Integer maxConcurrency;
 
     /**
      * 创建时间

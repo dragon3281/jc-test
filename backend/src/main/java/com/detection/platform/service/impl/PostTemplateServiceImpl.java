@@ -60,7 +60,6 @@ public class PostTemplateServiceImpl extends ServiceImpl<PostTemplateMapper, Pos
     public Long addTemplate(PostTemplateDTO templateDTO) {
         PostTemplate template = new PostTemplate();
         BeanUtils.copyProperties(templateDTO, template);
-        template.setVersion("1");
         
         this.save(template);
         log.info("添加POST模板成功, ID: {}, 名称: {}", template.getId(), template.getTemplateName());
@@ -81,8 +80,6 @@ public class PostTemplateServiceImpl extends ServiceImpl<PostTemplateMapper, Pos
         
         PostTemplate template = new PostTemplate();
         BeanUtils.copyProperties(templateDTO, template);
-        Integer version = Integer.parseInt(existTemplate.getVersion());
-        template.setVersion(String.valueOf(version + 1));
         
         boolean success = this.updateById(template);
         if (success) {

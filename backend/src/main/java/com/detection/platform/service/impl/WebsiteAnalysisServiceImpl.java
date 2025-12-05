@@ -190,13 +190,11 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
         template.setRequestUrl(analysis.getWebsiteUrl() + "/api/check");
         template.setRequestMethod("POST");
         template.setRequestHeaders("{\"Content-Type\":\"application/json\"}");
-        template.setRequestBody("{\"account\":\"{{account}}\"}");
-        template.setSuccessRule("{\"code\":200}");
-        template.setFailRule("{\"code\":400}");
-        template.setEnableProxy(0);
-        template.setTimeoutSeconds(30);
-        template.setRetryCount(3);
-        template.setVersion("1.0");
+        template.setRequestBody("{\"mobile\":\"{{phone}}\"}");
+        template.setDuplicateMsg("customer_mobile_no_duplicated");
+        template.setResponseCode(400);
+        // 默认变量配置
+        template.setVariableConfig("[{\"key\":\"header.Authorization\",\"location\":\"header\",\"name\":\"Authorization\",\"type\":\"token\"},{\"key\":\"body.mobile\",\"location\":\"body\",\"name\":\"mobile\",\"type\":\"mobile\"}]");
         
         // 直接保存到数据库
         boolean saved = postTemplateService.save(template);
@@ -325,5 +323,130 @@ public class WebsiteAnalysisServiceImpl implements WebsiteAnalysisService {
         } catch (Exception e) {
             log.error("[WebSocket] 推送分析状态失败: {}", e.getMessage(), e);
         }
+    }
+    
+    @Override
+    public java.util.Map<String, Object> buildRegisterTaskConfig(Long analysisId) {
+        log.info("[BuildTaskConfig] 根据分析ID={} 构建注册任务配置", analysisId);
+        WebsiteAnalysis analysis = websiteAnalysisMapper.selectById(analysisId);
+        if (analysis == null) {
+            throw new BusinessException("分析记录不存在");
+        }
+        if (analysis.getAnalysisStatus() != 2) {
+            throw new BusinessException("分析未完成或失败，无法生成任务配置");
+        }
+        
+        Map<String, Object> config = new HashMap<>();
+        
+        // 基础配置
+        String domain = analysis.getWebsiteUrl().replaceAll("https?://", "").replaceAll("/.*", "");
+        config.put("taskName", "自动注册-" + domain + "-" + System.currentTimeMillis());
+        config.put("websiteUrl", analysis.getWebsiteUrl());
+        config.put("registerApi", analysis.getRegisterApi() != null ? analysis.getRegisterApi() : "/wps/member/register");
+        config.put("method", analysis.getRegisterMethod() != null ? analysis.getRegisterMethod() : "PUT");
+        
+        // 字段映射（从分析结果解析或使用默认值）
+        String usernameField = "username";
+        String passwordField = "password";
+        String encryptionHeader = "Encryption";
+        String valueFieldName = "value";
+        String rsaKeyApi = "/wps/session/key/rsa";
+        String rsaTsParam = "t";
+        String dupMsgSubstring = "Ang username na ito ay ginamit na ng ibang user";
+        
+        try {
+            if (analysis.getAnalysisResult() != null) {
+                Map<String, Object> fullResult = objectMapper.readValue(
+                    analysis.getAnalysisResult(),
+                    java.util.Map.class
+                );
+                usernameField = (String) fullResult.getOrDefault("usernameField", "username");
+                passwordField = (String) fullResult.getOrDefault("passwordField", "password");
+                encryptionHeader = (String) fullResult.getOrDefault("encryptionHeader", "Encryption");
+                valueFieldName = (String) fullResult.getOrDefault("valueFieldName", "value");
+                
+                if (fullResult.containsKey("rsaKeyApi")) {
+                    rsaKeyApi = (String) fullResult.get("rsaKeyApi");
+                }
+                if (fullResult.containsKey("rsaTsParam")) {
+                    rsaTsParam = (String) fullResult.get("rsaTsParam");
+                }
+                if (fullResult.containsKey("dupMsgSubstring")) {
+                    dupMsgSubstring = (String) fullResult.get("dupMsgSubstring");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[BuildTaskConfig] 解析分析结果失败，使用默认字段: {}", e.getMessage());
+        }
+        
+        config.put("usernameField", usernameField);
+        config.put("passwordField", passwordField);
+        config.put("defaultPassword", "133adb");
+        
+        // 加密配置
+        String encryptionType = analysis.getEncryptionType() != null ? analysis.getEncryptionType() : "NONE";
+        config.put("encryptionType", encryptionType);
+        config.put("encryptionHeader", encryptionHeader);
+        config.put("valueFieldName", valueFieldName);
+        config.put("dupMsgSubstring", dupMsgSubstring);
+        
+        if ("DES_RSA".equalsIgnoreCase(encryptionType)) {
+            config.put("rsaKeyApi", rsaKeyApi);
+            config.put("rsaTsParam", rsaTsParam);
+        }
+        
+        // extraParams：根据ppvip或其他域名生成不同的参数集合
+        Map<String, Object> extraParams = new HashMap<>();
+        
+        // headers: Device/Language/Merchant等
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Device", "web");
+        headers.put("Language", "BN");
+        if (domain.contains("ppvip")) {
+            headers.put("Merchant", "ppvipbdtf5");
+        } else {
+            headers.put("Merchant", "ck555bdtf3");
+        }
+        extraParams.put("headers", headers);
+        
+        // cookies: 默认SHELL_deviceId
+        Map<String, String> cookies = new HashMap<>();
+        cookies.put("SHELL_deviceId", java.util.UUID.randomUUID().toString());
+        extraParams.put("cookies", cookies);
+        
+        // userAgent/referer
+        extraParams.put("userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36");
+        extraParams.put("referer", analysis.getWebsiteUrl());
+        
+        // 业务字段（如果分析结果中有requiredFields，可以提前设置部分默认值）
+        // 这里先给出ppvip/wwwtk系列网站的通用字段
+        extraParams.put("affiliateCode", "www");
+        extraParams.put("domain", "www-tk999");
+        extraParams.put("login", true);
+        extraParams.put("registerMethod", "WEB");
+        
+        try {
+            config.put("extraParams", objectMapper.writeValueAsString(extraParams));
+        } catch (Exception e) {
+            log.error("[BuildTaskConfig] 序列化extraParams失败", e);
+            config.put("extraParams", "{}");
+        }
+        
+        // 执行配置默认值
+        config.put("accountCount", 10);
+        config.put("concurrency", 5);
+        config.put("autoRetry", false);
+        config.put("retryTimes", 0);
+        config.put("useProxy", false);
+        config.put("needPhone", false);
+        config.put("needCaptcha", false);
+        config.put("needToken", false);
+        
+        log.info("[BuildTaskConfig] 任务配置已生成: taskName={}, websiteUrl={}, registerApi={}, encryptionType={}",
+                 config.get("taskName"), config.get("websiteUrl"), config.get("registerApi"), config.get("encryptionType"));
+        log.info("[BuildTaskConfig] 加密配置: encryptionHeader={}, valueFieldName={}, rsaKeyApi={}",
+                 config.get("encryptionHeader"), config.get("valueFieldName"), config.get("rsaKeyApi"));
+        
+        return config;
     }
 }

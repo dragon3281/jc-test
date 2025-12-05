@@ -1,3 +1,4 @@
+import type { BACKWARD, FORWARD } from './defaults';
 import type { CSSProperties, ComponentInternalInstance, Ref } from 'vue';
 export type Instance = ComponentInternalInstance;
 export type Alignment = 'auto' | 'smart' | 'center' | 'start' | 'end';
@@ -75,6 +76,10 @@ export type GridExposes = {
         xAxisScrollDir: Direction;
         yAxisScrollDir: Direction;
     } & ExposesStates;
+    touchStartX: Ref<number>;
+    touchStartY: Ref<number>;
+    handleTouchStart: (e: TouchEvent) => void;
+    handleTouchMove: (e: TouchEvent) => void;
     scrollTo: (props: {
         scrollLeft: number;
         scrollTop: number;
@@ -135,3 +140,13 @@ export type GridItemKeyGetter = <T extends {
     data: T;
     rowIndex: number;
 }) => string | number;
+type Dir = typeof FORWARD | typeof BACKWARD;
+export interface GridStates {
+    isScrolling: boolean;
+    scrollLeft: number;
+    scrollTop: number;
+    updateRequested: boolean;
+    xAxisScrollDir: Dir;
+    yAxisScrollDir: Dir;
+}
+export {};
