@@ -39,3 +39,7 @@ backups/
 # 测试文件
 test-tokens.txt
 test-phones.txt
+LJ-project/
+
+# Qoder配置
+.qoder/
