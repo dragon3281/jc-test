@@ -63,10 +63,7 @@
         <span v-else>登录中...</span>
       </el-button>
 
-      <div class="tips">
-        <el-icon><InfoFilled /></el-icon>
-        <span>默认账号: admin / admin123</span>
-      </div>
+
     </el-form>
   </div>
 </template>
@@ -83,8 +80,8 @@ const loginFormRef = ref(null)
 const loading = ref(false)
 
 const loginForm = reactive({
-  username: 'admin',
-  password: 'admin123'
+  username: '',
+  password: ''
 })
 
 const loginRules = {

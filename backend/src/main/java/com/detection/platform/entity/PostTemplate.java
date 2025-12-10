@@ -61,6 +61,16 @@ public class PostTemplate implements Serializable {
     private String variableConfig;
 
     /**
+     * 成功判断规则(JSON格式)
+     */
+    private String successRule;
+
+    /**
+     * 失败判断规则(JSON格式)
+     */
+    private String failRule;
+
+    /**
      * 重复手机号关键字(如: customer_mobile_no_duplicated)
      */
     private String duplicateMsg;

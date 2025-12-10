@@ -33,6 +33,22 @@ public class PostDetectionService {
     public interface ProgressListener {
         void onItemComplete(DetectionItemResult item, int processed, int total);
         default void onRoundComplete(int roundProcessed, int totalProcessed, int total) {}
+        
+        /**
+         * 检查是否应该暂停
+         * @return true表示应该暂停
+         */
+        default boolean shouldPause() {
+            return false;
+        }
+        
+        /**
+         * 检查是否应该取消
+         * @return true表示应该取消
+         */
+        default boolean shouldCancel() {
+            return false;
+        }
     }
     
     /**
@@ -568,6 +584,18 @@ public class PostDetectionService {
 
         int phoneIndex = 0;
         while (phoneIndex < totalPhones) {
+            // 检查是否应该暂停
+            if (listener != null && listener.shouldPause()) {
+                log.info("[BatchDetection-Enhanced] 任务已暂停，当前进度: {}/{}", phoneIndex, totalPhones);
+                break; // 退出循环，保留当前进度
+            }
+            
+            // 检查是否应该取消
+            if (listener != null && listener.shouldCancel()) {
+                log.info("[BatchDetection-Enhanced] 任务已取消，当前进度: {}/{}", phoneIndex, totalPhones);
+                break; // 退出循环
+            }
+            
             int concurrency = currentConcurrency.get();
             int endIdx = Math.min(phoneIndex + concurrency, totalPhones);
 

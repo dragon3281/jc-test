@@ -70,4 +70,16 @@ public class ProxyPoolDTO implements Serializable {
      */
     @Size(max = 500, message = "描述长度不能超过500")
     private String description;
+    
+    /**
+     * 国家
+     */
+    @Size(max = 50, message = "国家名称长度不能超过50")
+    private String country;
+    
+    /**
+     * 分组
+     */
+    @Size(max = 100, message = "分组名称长度不能超过100")
+    private String groupName;
 }

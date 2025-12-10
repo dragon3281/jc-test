@@ -1,17 +1,31 @@
 server:
   port: 8080
   # context-path: /api  # 暂时移除context-path简化配置
+  # Tomcat配置 - 保持连接
+  tomcat:
+    connection-timeout: 60000  # 连接超时60秒
+    keep-alive-timeout: 60000  # Keep-Alive超时60秒
+    max-keep-alive-requests: 100  # 最大Keep-Alive请求数
+    uri-encoding: UTF-8  # URI编码
 
 spring:
   application:
     name: detection-platform
   main:
     allow-circular-references: true
+    allow-bean-definition-overriding: true  # 允许Bean覆盖，用于WebSocket心跳调度器
+  
+  # 任务调度配置
+  task:
+    scheduling:
+      pool:
+        size: 5  # 调度线程池大小
+      thread-name-prefix: "task-scheduling-"
   
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:detection_platform}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:detection_platform}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&connectionInitSqls=SET NAMES utf8mb4
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:123456}
     hikari:
@@ -60,8 +74,12 @@ spring:
         max-concurrency: 10
         prefetch: 10
   
-  # 文件上传配置
+  # 文件上传配置和HTTP编码配置
   servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
     multipart:
       enabled: true
       max-file-size: 100MB

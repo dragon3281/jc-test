@@ -60,6 +60,16 @@ public class ProxyPoolVO implements Serializable {
     private String description;
     
     /**
+     * 国家
+     */
+    private String country;
+    
+    /**
+     * 分组
+     */
+    private String groupName;
+    
+    /**
      * 状态: 1-可用, 2-不可用, 3-未检测
      */
     private Integer status;

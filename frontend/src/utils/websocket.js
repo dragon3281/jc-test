@@ -8,6 +8,8 @@ class WebSocketClient {
     this.subscriptions = new Map()
     this.reconnectTimer = null
     this.reconnectDelay = 3000
+    this.maxReconnectDelay = 30000  // 最大重连延迟30秒
+    this.reconnectAttempts = 0  // 重连尝试次数
   }
 
   /**
@@ -29,8 +31,17 @@ class WebSocketClient {
       const socket = new SockJS(wsUrl)
       this.stompClient = Stomp.over(socket)
       
-      // 禁用日志（可选）
-      this.stompClient.debug = null
+      // 启用STOMP原生心跳机制，与后端配置保持一致
+      // 格式: [outgoing, incoming] 单位:毫秒
+      this.stompClient.heartbeat.outgoing = 20000  // 发送心跳间隔20秒
+      this.stompClient.heartbeat.incoming = 20000  // 接收心跳间隔20秒
+      
+      // 启用调试日志（可通过debug=null关闭）
+      this.stompClient.debug = (msg) => {
+        if (msg.indexOf('PING') === -1 && msg.indexOf('PONG') === -1) {
+          console.log('[WebSocket Debug]', msg)
+        }
+      }
       
       const headers = token ? { Authorization: `Bearer ${token}` } : {}
       
@@ -39,6 +50,10 @@ class WebSocketClient {
         (frame) => {
           console.log('[WebSocket] 连接成功', frame)
           this.connected = true
+          this.reconnectAttempts = 0  // 重置重连计数器
+          this.reconnectDelay = 3000  // 重置重连延迟
+          
+          console.log('[WebSocket] STOMP 心跳已启用: 发送/接收 = 20s/20s')
           
           // 重新订阅之前的主题
           this.resubscribeAll()
@@ -152,19 +167,23 @@ class WebSocketClient {
   }
 
   /**
-   * 计划重连
+   * 计划重连（指数退避策略）
    */
   scheduleReconnect(onConnected, onError) {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
     }
 
-    console.log(`[WebSocket] ${this.reconnectDelay / 1000}秒后尝试重连...`)
+    // 指数退避：每次失败后延迟时间加個
+    this.reconnectAttempts++
+    const delay = Math.min(this.reconnectDelay * this.reconnectAttempts, this.maxReconnectDelay)
+    
+    console.log(`[WebSocket] 第 ${this.reconnectAttempts} 次重连尝试，${delay / 1000}秒后执行...`)
     
     this.reconnectTimer = setTimeout(() => {
       console.log('[WebSocket] 尝试重连...')
       this.connect(onConnected, onError)
-    }, this.reconnectDelay)
+    }, delay)
   }
 
   /**

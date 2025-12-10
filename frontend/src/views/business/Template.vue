@@ -6,43 +6,100 @@
           <div class="toolbar-title">POST模板管理</div>
           <div class="toolbar-actions">
             <el-button type="success" icon="MagicStick" @click="showParseDialog = true">自动识别</el-button>
+            <el-button type="info" icon="Refresh" @click="handleRefresh" :loading="loading">刷新</el-button>
+            <el-button type="warning" icon="Postcard" @click="handleShowPostTemplates">POST模板</el-button>
             <el-button type="primary" icon="Plus" @click="handleAdd">新建模板</el-button>
           </div>
         </div>
       </template>
 
-      <!-- 数据表格 -->
-      <el-table :data="tableData" style="width: 100%" v-loading="loading">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="templateName" label="模板名称" min-width="180" />
-        <el-table-column prop="targetSite" label="目标站" min-width="150" />
-        <el-table-column prop="requestMethod" label="请求方法" width="100">
+      <!-- 数据表格 - 任务列表 -->
+      <el-table :data="taskData" style="width: 100%" v-loading="loading" stripe border size="small">
+        <el-table-column prop="taskId" label="任务ID" width="100" fixed="left" />
+        <el-table-column prop="templateName" label="模板名称" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="targetSite" label="目标站" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.requestMethod === 'POST' ? 'success' : 'info'" size="small">
-              {{ row.requestMethod }}
+            <el-tag :type="getStatusType(row.status)" size="small">
+              {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="enableProxy" label="使用代理" width="100">
+        <el-table-column prop="total" label="总数" width="65" align="center" />
+        <el-table-column prop="processed" label="已处理" width="75" align="center" />
+        <el-table-column prop="duplicateCount" label="已注册" width="75" align="center" />
+        <el-table-column label="进度" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.enableProxy === 1 ? 'success' : 'info'" size="small">
-              {{ row.enableProxy === 1 ? '是' : '否' }}
-            </el-tag>
+            <el-progress 
+              :percentage="getProgress(row)" 
+              :status="row.status === 'COMPLETE' ? 'success' : (row.status === 'ERROR' ? 'exception' : '')" 
+            />
           </template>
         </el-table-column>
-        <el-table-column prop="timeout" label="超时时间" width="100">
-          <template #default="{ row }">{{ row.timeout }}秒</template>
-        </el-table-column>
-        <el-table-column prop="version" label="版本" width="100" />
-        <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="360" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleRun(row)" link icon="CaretRight">运行</el-button>
-            <el-button type="info" size="small" @click="handleDetail(row)" link icon="Document">详情</el-button>
-            <el-button type="warning" size="small" @click="handleEdit(row)" link icon="Edit">编辑</el-button>
-            <el-button type="success" size="small" @click="handleTest(row)" link icon="Operation">测试</el-button>
-            <el-button type="primary" size="small" @click="handleDownload(row)" link icon="Download">下载</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)" link icon="Delete">删除</el-button>
+            <!-- PENDING状态：显示运行 -->
+            <el-button 
+              v-if="row.status === 'PENDING'" 
+              type="primary" 
+              size="small" 
+              @click="handleRunTask(row)" 
+              link 
+              icon="CaretRight"
+            >运行</el-button>
+            
+            <!-- RUNNING状态：显示暂停 -->
+            <el-button 
+              v-if="row.status === 'RUNNING'" 
+              type="warning" 
+              size="small" 
+              @click="handlePauseTask(row)" 
+              link 
+              icon="VideoPause"
+            >暂停</el-button>
+            
+            <!-- PAUSED状态：显示继续运行 -->
+            <el-button 
+              v-if="row.status === 'PAUSED'" 
+              type="success" 
+              size="small" 
+              @click="handleResumeTask(row)" 
+              link 
+              icon="VideoPlay"
+            >继续运行</el-button>
+            
+            <!-- 所有状态都显示详情 -->
+            <el-button type="info" size="small" @click="handleTaskDetail(row)" link icon="Document">详情</el-button>
+            
+            <!-- COMPLETE状态：显示下载下拉菜单 -->
+            <el-dropdown 
+              v-if="row.status === 'COMPLETE'"
+              trigger="click"
+              @command="(cmd) => handleDownloadTask(row, cmd)"
+            >
+              <el-button type="primary" size="small" link>
+                下载<el-icon class="el-icon--right"><arrow-down /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="registered">
+                    <el-icon><document-checked /></el-icon>
+                    下载已注册
+                  </el-dropdown-item>
+                  <el-dropdown-item command="unregistered">
+                    <el-icon><document /></el-icon>
+                    下载未注册
+                  </el-dropdown-item>
+                  <el-dropdown-item command="original" divided>
+                    <el-icon><download /></el-icon>
+                    下载原文件
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            
+            <!-- 所有状态都显示删除 -->
+            <el-button type="danger" size="small" @click="handleDeleteTask(row)" link icon="Delete">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -111,6 +168,52 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit" :loading="submitLoading">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- POST模板管理对话框 -->
+    <el-dialog
+      v-model="showUseTemplateDialog"
+      title="POST模板管理"
+      width="1200px"
+      top="5vh"
+      :close-on-click-modal="false"
+    >
+      <el-table :data="templateList" style="width: 100%" max-height="70vh" stripe border size="small">
+        <el-table-column prop="id" label="ID" width="50" align="center" />
+        <el-table-column prop="templateName" label="模板名称" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="targetSite" label="目标站" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="requestMethod" label="方法" width="70" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.requestMethod === 'POST' ? 'success' : 'info'" size="small">
+              {{ row.requestMethod }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="enableProxy" label="代理" width="60" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.enableProxy === 1 ? 'success' : 'info'" size="small">
+              {{ row.enableProxy === 1 ? '是' : '否' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="timeout" label="超时" width="70" align="center">
+          <template #default="{ row }">{{ row.timeout }}秒</template>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="155" />
+        <el-table-column label="操作" width="330" align="center">
+          <template #default="{ row }">
+            <el-space :size="6" wrap>
+              <el-button type="primary" size="small" @click="handleCreateTask(row)" icon="Plus">创建任务</el-button>
+              <el-button type="warning" size="small" @click="handleEditInDialog(row)" icon="Edit">编辑</el-button>
+              <el-button type="success" size="small" @click="handleTestInDialog(row)" icon="Operation">测试</el-button>
+              <el-button type="danger" size="small" @click="handleDeleteInDialog(row)" icon="Delete">删除</el-button>
+            </el-space>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="showUseTemplateDialog = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -493,7 +596,14 @@
     </el-dialog>
 
     <!-- 详情对话框：显示当前速率和统计信息 -->
-    <el-dialog v-model="detailVisible" title="任务详情" width="700px" @close="detailPollTimer && clearInterval(detailPollTimer)">
+    <el-dialog 
+      v-model="detailVisible" 
+      title="任务详情" 
+      width="700px" 
+      :append-to-body="true"
+      :close-on-click-modal="false"
+      @close="handleDetailDialogClose"
+    >
       <el-descriptions :column="2" border size="small">
         <el-descriptions-item label="模板名称">{{ currentDetail.templateName }}</el-descriptions-item>
         <el-descriptions-item label="任务状态">
@@ -521,17 +631,44 @@
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>
-        <el-button type="primary" @click="handleRefreshRate" :loading="refreshRateLoading">刷新速率</el-button>
-        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-space>
+          <el-button type="primary" @click="handleRefreshTaskDetail" :loading="refreshRateLoading">刷新</el-button>
+          <el-dropdown 
+            v-if="currentDetail.status === 'COMPLETE' && currentDetail.taskId"
+            trigger="click"
+            @command="handleDownloadDetailTask"
+          >
+            <el-button type="success">
+              下载结果<el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="registered">
+                  <el-icon><document-checked /></el-icon>
+                  下载已注册
+                </el-dropdown-item>
+                <el-dropdown-item command="unregistered">
+                  <el-icon><document /></el-icon>
+                  下载未注册
+                </el-dropdown-item>
+                <el-dropdown-item command="original" divided>
+                  <el-icon><download /></el-icon>
+                  下载原文件
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-button @click="detailVisible = false">关闭</el-button>
+        </el-space>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { Plus, Delete, ArrowDown, Download, Document, DocumentChecked } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 
 const loading = ref(false)
@@ -539,17 +676,21 @@ const submitLoading = ref(false)
 const testLoading = ref(false)
 const parseLoading = ref(false)
 const generateLoading = ref(false)
-const tableData = ref([])
+const tableData = ref([]) // 模板列表（保留）
+const taskData = ref([]) // 任务列表（新增）
 const dialogVisible = ref(false)
 const testVisible = ref(false)
 const showParseDialog = ref(false)
 const showConfigDialog = ref(false)
+const showUseTemplateDialog = ref(false) // 使用模板对话框
 const dialogTitle = ref('新建模板')
 const formRef = ref(null)
 const testResult = ref(null)
 const parseResult = ref(null)
 const manualVariables = ref([{ name: '', location: 'header' }])
 const detectionConfig = reactive({ statusCode: null, keyword: '' })
+const templateList = ref([]) // 所有模板列表（使用模板时选择）
+const selectedTemplateId = ref(null) // 选中的模板ID
 
 // 任务化进度
 const currentTaskId = ref(null)
@@ -594,7 +735,7 @@ const runVisible = ref(false)
 const runStep = ref(0) // 0=上传文件, 1=速率探测, 2=批量检测, 3=完成
 const runStepLoading = ref(false)
 const runFiles = reactive({ tokenFile: null, phoneFile: null })
-const runData = reactive({ tokens: [], phones: [], templateId: null })
+const runData = reactive({ tokens: [], phones: [], templateId: null, taskId: null })
 const probeLoading = ref(false)
 const probeProgress = ref(0)
 const probeResult = ref(null)
@@ -602,11 +743,13 @@ const runProgress = reactive({ total: 0, processed: 0, duplicateCount: 0, status
 const runTaskId = ref(null)
 let runPollTimer = null
 let detailPollTimer = null
+let autoRefreshTimer = null // 自动刷新定时器
 
 // 详情对话框状态
 const detailVisible = ref(false)
 const currentDetail = reactive({ 
   templateName: '', 
+  taskId: null, // 添加taskId
   status: 'PENDING', 
   currentRate: null, 
   optimalConcurrency: null,
@@ -636,24 +779,82 @@ const removeVariable = (index) => {
   }
 }
 
-// 获取数据
+// 获取任务数据
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await request.get('/template/page', {
+    const res = await request.get('/template/detect/tasks', {
       params: {
         current: pagination.current,
         size: pagination.size
       }
     })
     if (res.code === 200) {
-      tableData.value = res.data.records
-      pagination.total = res.data.total
+      taskData.value = res.data.records || res.data || []
+      pagination.total = res.data.total || taskData.value.length
+      
+      // 检查是否有运行中的任务，自动开启刷新
+      checkAndStartAutoRefresh()
     }
   } catch (error) {
-    ElMessage.error('获取数据失败')
+    ElMessage.error('获取任务数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 手动刷新
+const handleRefresh = async () => {
+  await fetchData()
+  ElMessage.success('刷新成功')
+}
+
+// 检查并启动自动刷新
+const checkAndStartAutoRefresh = () => {
+  // 检查是否有运行中或暂停的任务
+  const hasRunningTask = taskData.value.some(task => 
+    task.status === 'RUNNING' || task.status === 'PAUSED'
+  )
+  
+  if (hasRunningTask) {
+    // 启动自动刷新，每15秒刷新一次
+    if (!autoRefreshTimer) {
+      console.log('⚙️ 检测到运行中的任务，启动自动刷新 (15秒/次)')
+      autoRefreshTimer = setInterval(() => {
+        console.log('🔄 自动刷新任务列表...')
+        fetchData()
+      }, 15000) // 15秒刷新一次
+    }
+  } else {
+    // 没有运行中的任务，停止自动刷新
+    if (autoRefreshTimer) {
+      console.log('⚠️ 没有运行中的任务，停止自动刷新')
+      clearInterval(autoRefreshTimer)
+      autoRefreshTimer = null
+    }
+  }
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+    console.log('🛑 停止自动刷新')
+  }
+}
+
+// 获取模板列表（使用模板时调用）
+const fetchTemplates = async () => {
+  try {
+    const res = await request.get('/template/page', {
+      params: { current: 1, size: 100 }
+    })
+    if (res.code === 200) {
+      templateList.value = res.data.records || []
+    }
+  } catch (error) {
+    ElMessage.error('获取模板列表失败')
   }
 }
 
@@ -1035,11 +1236,22 @@ const startProbe = async () => {
 // 开始批量检测
 const startBatchDetection = async () => {
   try {
-    const res = await request.post('/template/detect/start', {
+    // 如果存在taskId（从任务列表点击运行），则传入taskId
+    const requestData = {
       templateId: runData.templateId,
       tokens: runData.tokens,
       phones: runData.phones
-    })
+    }
+    
+    // 如果有任务ID，则使用该任务ID
+    if (runData.taskId) {
+      requestData.taskId = runData.taskId
+      console.log('🎯 使用已存在的任务ID:', runData.taskId)
+    } else {
+      console.log('🆕 将生成新的任务ID')
+    }
+    
+    const res = await request.post('/template/detect/start', requestData)
     
     if (res.code === 200) {
       runTaskId.value = res.data.taskId
@@ -1048,6 +1260,11 @@ const startBatchDetection = async () => {
       runProgress.duplicateCount = 0
       runProgress.status = 'RUNNING'
       runProgress.startTime = Date.now()
+      
+      console.log('✅ 任务已启动，taskId:', res.data.taskId)
+      
+      // 立即刷新一次任务列表
+      await fetchData()
       
       // 开始轮询
       runPollTimer = setInterval(async () => {
@@ -1164,8 +1381,385 @@ const handleDownload = async (row) => {
   ElMessage.info('请先使用运行功能执行批量检测，然后在完成后下载结果')
 }
 
+// ========== 任务管理相关函数 ==========
+
+// 状态类型映射
+const getStatusType = (status) => {
+  const map = {
+    'PENDING': 'info',
+    'RUNNING': 'warning',
+    'PAUSED': 'warning',
+    'COMPLETE': 'success',
+    'ERROR': 'danger',
+    'CANCELLED': 'info'
+  }
+  return map[status] || 'info'
+}
+
+// 状态文本映射
+const getStatusText = (status) => {
+  const map = {
+    'PENDING': '等待中',
+    'RUNNING': '运行中',
+    'PAUSED': '已暂停',
+    'COMPLETE': '已完成',
+    'ERROR': '错误',
+    'CANCELLED': '已取消'
+  }
+  return map[status] || status
+}
+
+// 计算进度
+const getProgress = (row) => {
+  if (!row.total || row.total === 0) return 0
+  return Math.floor((row.processed / row.total) * 100)
+}
+
+// 格式化时间
+const formatTime = (timestamp) => {
+  if (!timestamp) return '-'
+  const date = new Date(timestamp)
+  return date.toLocaleString('zh-CN', { 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit',
+    hour: '2-digit', 
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// 任务详情
+const handleTaskDetail = async (row) => {
+  currentDetail.templateName = row.templateName
+  currentDetail.taskId = row.taskId // 保存taskId
+  currentDetail.status = row.status
+  currentDetail.processed = row.processed
+  currentDetail.total = row.total
+  currentDetail.duplicateCount = row.duplicateCount
+  
+  detailVisible.value = true
+  
+  // 启动实时刷新
+  if (detailPollTimer) {
+    clearInterval(detailPollTimer)
+  }
+  
+  if (row.status === 'RUNNING') {
+    detailPollTimer = setInterval(async () => {
+      try {
+        const s = await request.get(`/template/detect/status/${row.taskId}`)
+        if (s.code === 200) {
+          currentDetail.status = s.data.status
+          currentDetail.processed = s.data.processed
+          currentDetail.total = s.data.total
+          currentDetail.duplicateCount = s.data.duplicateCount
+          
+          // 如果任务已结束，停止轮询
+          if (s.data.status === 'COMPLETE' || s.data.status === 'ERROR' || s.data.status === 'CANCELLED') {
+            clearInterval(detailPollTimer)
+            detailPollTimer = null
+          }
+        }
+      } catch (e) {}
+    }, 2000)
+  }
+}
+
+// 关闭详情对话框
+const handleDetailDialogClose = () => {
+  if (detailPollTimer) {
+    clearInterval(detailPollTimer)
+    detailPollTimer = null
+  }
+}
+
+// 刷新任务详情（手动点击刷新按钮）
+const handleRefreshTaskDetail = async () => {
+  refreshRateLoading.value = true
+  try {
+    // 使用保存的taskId
+    if (currentDetail.taskId) {
+      const s = await request.get(`/template/detect/status/${currentDetail.taskId}`)
+      if (s.code === 200) {
+        currentDetail.status = s.data.status
+        currentDetail.processed = s.data.processed
+        currentDetail.total = s.data.total
+        currentDetail.duplicateCount = s.data.duplicateCount
+        ElMessage.success('刷新成功')
+      }
+    } else {
+      ElMessage.warning('未找到任务ID')
+    }
+  } catch (error) {
+    ElMessage.error('刷新失败')
+  } finally {
+    refreshRateLoading.value = false
+  }
+}
+
+// 从详情对话框下载任务结果
+const handleDownloadDetailTask = async (command) => {
+  try {
+    let apiUrl = ''
+    let filename = ''
+    
+    if (command === 'registered') {
+      apiUrl = `/template/detect/export/registered/${currentDetail.taskId}`
+      filename = `已注册_${currentDetail.taskId}.txt`
+    } else if (command === 'unregistered') {
+      apiUrl = `/template/detect/export/unregistered/${currentDetail.taskId}`
+      filename = `未注册_${currentDetail.taskId}.txt`
+    } else if (command === 'original') {
+      apiUrl = `/template/detect/export/${currentDetail.taskId}`
+      filename = `原数据_${currentDetail.taskId}.txt`
+    }
+    
+    const res = await request.get(apiUrl)
+    if (res.code === 200) {
+      // 解析响应数据，只提取手机号
+      let phones = []
+      
+      if (command === 'original') {
+        // 原数据：直接下载base64内容
+        const content = atob(res.data.content)
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = res.data.filename || filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } else {
+        // 已注册/未注册：提取手机号
+        const data = res.data
+        if (data.duplicated && command === 'registered') {
+          phones = data.duplicated.map(item => item.phone)
+        } else if (data.available && command === 'unregistered') {
+          phones = data.available.map(item => item.phone)
+        }
+        
+        // 生成txt文件（每行一个手机号）
+        const content = phones.join('\n')
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+      
+      ElMessage.success('下载成功')
+    }
+  } catch (error) {
+    ElMessage.error('下载失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 下载任务结果
+const handleDownloadTask = async (row, command) => {
+  try {
+    let apiUrl = ''
+    let filename = ''
+    
+    if (command === 'registered') {
+      apiUrl = `/template/detect/export/registered/${row.taskId}`
+      filename = `已注册_${row.taskId}.txt`
+    } else if (command === 'unregistered') {
+      apiUrl = `/template/detect/export/unregistered/${row.taskId}`
+      filename = `未注册_${row.taskId}.txt`
+    } else if (command === 'original') {
+      apiUrl = `/template/detect/export/${row.taskId}`
+      filename = `原数据_${row.taskId}.txt`
+    }
+    
+    const res = await request.get(apiUrl)
+    if (res.code === 200) {
+      // 解析响应数据，只提取手机号
+      let phones = []
+      
+      if (command === 'original') {
+        // 原数据：直接下载base64内容
+        const content = atob(res.data.content)
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = res.data.filename || filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } else {
+        // 已注册/未注册：提取手机号
+        const data = res.data
+        if (data.duplicated && command === 'registered') {
+          phones = data.duplicated.map(item => item.phone)
+        } else if (data.available && command === 'unregistered') {
+          phones = data.available.map(item => item.phone)
+        }
+        
+        // 生成txt文件（每行一个手机号）
+        const content = phones.join('\n')
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+      
+      ElMessage.success('导出成功')
+    }
+  } catch (e) {
+    ElMessage.error('导出失败')
+  }
+}
+
+// 删除任务
+const handleDeleteTask = async (row) => {
+  await ElMessageBox.confirm('确定要删除该任务吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+
+  try {
+    const res = await request.delete(`/template/detect/task/${row.taskId}`)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      fetchData()
+    }
+  } catch (error) {
+    ElMessage.error('删除失败')
+  }
+}
+
+// 打开POST模板管理对话框
+const handleShowPostTemplates = async () => {
+  await fetchTemplates()
+  showUseTemplateDialog.value = true
+}
+
+// 创建任务（点击POST模板对话框内的“创建任务”按钮）
+const handleCreateTask = async (row) => {
+  try {
+    // 调用后端API创建任务
+    const res = await request.post('/template/detect/create-task', {
+      templateId: row.id,
+      templateName: row.templateName,
+      targetSite: row.targetSite
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success('任务创建成功，请在任务列表中点击“使用”按钮上传文件')
+      // 关闭POST模板对话框
+      showUseTemplateDialog.value = false
+      // 刷新任务列表
+      await fetchData()
+    }
+  } catch (error) {
+    ElMessage.error('创建任务失败：' + (error.message || '未知错误'))
+  }
+}
+
+// 运行任务（点击任务列表中的"运行"按钮）
+const handleRunTask = (row) => {
+  // 打开运行对话框，传入任务信息
+  runData.templateId = row.templateId
+  runData.taskId = row.taskId // 保存任务ID
+  runData.tokens = []
+  runData.phones = []
+  runFiles.tokenFile = null
+  runFiles.phoneFile = null
+  runStep.value = 0
+  probeResult.value = null
+  runVisible.value = true
+}
+
+// 暂停任务
+const handlePauseTask = async (row) => {
+  try {
+    const res = await request.post(`/template/detect/pause/${row.taskId}`)
+    if (res.code === 200) {
+      ElMessage.success('任务已暂停')
+      fetchData()
+    }
+  } catch (error) {
+    ElMessage.error('暂停失败：' + (error.message || '未知错误'))
+  }
+}
+
+// 继续运行任务
+const handleResumeTask = async (row) => {
+  try {
+    const res = await request.post(`/template/detect/resume/${row.taskId}`)
+    if (res.code === 200) {
+      ElMessage.success('任务已继续运行')
+      fetchData()
+    }
+  } catch (error) {
+    ElMessage.error('继续运行失败：' + (error.message || '未知错误'))
+  }
+}
+const handleEditInDialog = async (row) => {
+  // 关闭POST模板对话框
+  showUseTemplateDialog.value = false
+  // 调用原有的编辑功能
+  await handleEdit(row)
+}
+
+// POST模板对话框内的测试
+const handleTestInDialog = (row) => {
+  // 关闭POST模板对话框
+  showUseTemplateDialog.value = false
+  // 调用原有的测试功能
+  handleTest(row)
+}
+
+// POST模板对话框内的删除
+const handleDeleteInDialog = async (row) => {
+  try {
+    await handleDelete(row)
+    // 删除成功后刷新对话框内的列表
+    await fetchTemplates()
+  } catch (error) {
+    // 删除失败或取消，不做处理
+  }
+}
+
 onMounted(() => {
   fetchData()
+})
+
+onBeforeUnmount(() => {
+  // 清理所有定时器
+  stopAutoRefresh()
+  
+  if (runPollTimer) {
+    clearInterval(runPollTimer)
+    runPollTimer = null
+  }
+  
+  if (detailPollTimer) {
+    clearInterval(detailPollTimer)
+    detailPollTimer = null
+  }
+  
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+  
+  console.log('📦 组件卸载，清理所有定时器')
 })
 </script>
 
@@ -1183,5 +1777,20 @@ onMounted(() => {
 pre {
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* 下载按钮下拉菜单样式优化 */
+:deep(.el-dropdown-menu__item) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:deep(.el-dropdown-menu__item .el-icon) {
+  font-size: 16px;
+}
+
+.el-icon--right {
+  margin-left: 4px;
 }
 </style>

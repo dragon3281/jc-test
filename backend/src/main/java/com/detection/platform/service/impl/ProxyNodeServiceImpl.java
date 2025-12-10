@@ -8,6 +8,7 @@ import com.detection.platform.config.GlobalExceptionHandler;
 import com.detection.platform.dao.ProxyNodeMapper;
 import com.detection.platform.dto.ProxyNodeDTO;
 import com.detection.platform.entity.ProxyNode;
+import com.detection.platform.entity.ProxyPool;
 import com.detection.platform.service.ProxyNodeService;
 import com.detection.platform.service.ProxyPoolService;
 import com.detection.platform.vo.ProxyNodeVO;
@@ -21,14 +22,13 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URL;
+import java.net.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.io.InputStream;
+import java.io.IOException;
 
 /**
  * 代理节点Service实现类
@@ -261,49 +261,118 @@ public class ProxyNodeServiceImpl extends ServiceImpl<ProxyNodeMapper, ProxyNode
             throw new GlobalExceptionHandler.BusinessException("代理节点不存在");
         }
         
+        // 获取代理池信息以确定代理类型
+        ProxyPool pool = proxyPoolService.getById(node.getPoolId());
+        if (pool == null) {
+            throw new GlobalExceptionHandler.BusinessException("代理池不存在");
+        }
+        
+        log.info("开始检测代理节点, ID: {}, 地址: {}, 类型: {}", 
+                id, node.getProxyAddress(), getProxyTypeText(pool.getProxyType()));
+        
         boolean isAvailable = false;
         long startTime = System.currentTimeMillis();
         
         try {
-            // 使用代理访问测试URL
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, 
-                    new InetSocketAddress(node.getProxyAddress().split(":")[0], 
-                            Integer.parseInt(node.getProxyAddress().split(":")[1])));
+            String[] addressParts = node.getProxyAddress().split(":");
+            String proxyHost = addressParts[0];
+            int proxyPort = Integer.parseInt(addressParts[1]);
             
+            // 根据代理类型创建不同的Proxy对象
+            Proxy.Type proxyType;
+            if (pool.getProxyType() == 3) {
+                // SOCKS5代理
+                proxyType = Proxy.Type.SOCKS;
+                log.debug("使用SOCKS代理: {}:{}", proxyHost, proxyPort);
+            } else {
+                // HTTP/HTTPS代理
+                proxyType = Proxy.Type.HTTP;
+                log.debug("使用HTTP代理: {}:{}", proxyHost, proxyPort);
+            }
+            
+            // 创建代理对象
+            Proxy proxy = new Proxy(proxyType, new InetSocketAddress(proxyHost, proxyPort));
+            
+            // 如果需要认证，设置认证器
+            if (pool.getAuthType() == 1 && StringUtils.hasText(pool.getUsername())) {
+                String username = pool.getUsername();
+                String password = pool.getPassword();
+                
+                // 解密密码
+                if (StringUtils.hasText(password)) {
+                    try {
+                        password = aesUtil.decrypt(password);
+                    } catch (Exception e) {
+                        log.warn("解密代理密码失败，使用原始值");
+                    }
+                }
+                
+                final String finalPassword = password;
+                log.debug("设置代理认证: 用户名={}", username);
+                
+                Authenticator.setDefault(new Authenticator() {
+                    @Override
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(username, finalPassword.toCharArray());
+                    }
+                });
+            }
+            
+            // 测试连接
             URL url = new URL("http://www.baidu.com");
+            log.debug("尝试通过代理访问: {}", url);
+            
             HttpURLConnection conn = (HttpURLConnection) url.openConnection(proxy);
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
+            conn.setConnectTimeout(10000);  // 增加超时时间到10秒
+            conn.setReadTimeout(10000);
+            conn.setRequestMethod("GET");
             
             int responseCode = conn.getResponseCode();
-            isAvailable = (responseCode == 200);
+            isAvailable = (responseCode == 200 || responseCode == 301 || responseCode == 302);
             
             long responseTime = System.currentTimeMillis() - startTime;
             
-            // 更新节点信息
+            log.info("代理响应: HTTP {}, 耗时: {}ms", responseCode, responseTime);
+            
+            // 读取响应内容（可选，验证代理确实工作）
             if (isAvailable) {
-                node.setStatus(1); // 可用
-                node.setResponseTime((int) responseTime);
-                node.setSuccessCount(node.getSuccessCount() + 1);
-            } else {
-                node.setStatus(2); // 不可用
-                node.setFailCount(node.getFailCount() + 1);
+                try (InputStream is = conn.getInputStream()) {
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = is.read(buffer);
+                    log.debug("成功读取响应内容: {} 字节", bytesRead);
+                }
             }
             
+            // 更新节点信息
+            if (isAvailable) {
+                node.setStatus(1); // 正常
+                node.setResponseTime((int) responseTime);
+                node.setSuccessCount(node.getSuccessCount() + 1);
+                log.info("✓ 代理节点检测成功, ID: {}, 响应时间: {}ms, 状态: 正常", id, responseTime);
+            } else {
+                node.setStatus(2); // 异常
+                node.setFailCount(node.getFailCount() + 1);
+                log.warn("✗ 代理节点不可用, ID: {}, HTTP状态码: {}, 状态: 异常", id, responseCode);
+            }
+            
+            conn.disconnect();
+            
+        } catch (IOException e) {
+            node.setStatus(2); // 不可用
+            node.setFailCount(node.getFailCount() + 1);
+            log.error("✗ 检测代理节点失败, ID: {}, 地址: {}, 错误类型: {}, 错误信息: {}", 
+                    id, node.getProxyAddress(), e.getClass().getSimpleName(), e.getMessage());
         } catch (Exception e) {
             node.setStatus(2); // 不可用
             node.setFailCount(node.getFailCount() + 1);
-            log.warn("检测代理节点失败, ID: {}, 错误: {}", id, e.getMessage());
+            log.error("✗ 检测代理节点异常, ID: {}, 错误: {}", id, e.getMessage(), e);
+        } finally {
+            // 清除认证器
+            Authenticator.setDefault(null);
         }
         
-        // 计算健康度评分
-        long total = node.getSuccessCount() + node.getFailCount();
-        if (total > 0) {
-            BigDecimal score = BigDecimal.valueOf(node.getSuccessCount())
-                    .divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
-            node.setHealthScore(score.intValue());
-        }
+        // 不再计算复杂的健康度，直接根据最后一次检测结果设置状态
+        // status: 1=正常(绿色), 2=异常(红色), 3=检测中(黄色)
         
         node.setLastCheckTime(LocalDateTime.now());
         this.updateById(node);
@@ -311,8 +380,24 @@ public class ProxyNodeServiceImpl extends ServiceImpl<ProxyNodeMapper, ProxyNode
         // 刷新代理池统计
         proxyPoolService.refreshPoolStats(node.getPoolId());
         
-        log.info("检测代理节点完成, ID: {}, 结果: {}", id, isAvailable ? "可用" : "不可用");
+        log.info("检测代理节点完成, ID: {}, 最终状态: {}", 
+                id, isAvailable ? "✓ 正常" : "✗ 异常");
         return isAvailable;
+    }
+    
+    /**
+     * 获取代理类型文本
+     */
+    private String getProxyTypeText(Integer proxyType) {
+        if (proxyType == null) {
+            return "未知";
+        }
+        return switch (proxyType) {
+            case 1 -> "HTTP";
+            case 2 -> "HTTPS";
+            case 3 -> "SOCKS5";
+            default -> "未知";
+        };
     }
     
     @Override
@@ -414,9 +499,9 @@ public class ProxyNodeServiceImpl extends ServiceImpl<ProxyNodeMapper, ProxyNode
         // 设置状态文本
         if (node.getStatus() != null) {
             switch (node.getStatus()) {
-                case 1 -> vo.setStatusText("可用");
-                case 2 -> vo.setStatusText("不可用");
-                case 3 -> vo.setStatusText("未检测");
+                case 1 -> vo.setStatusText("正常");
+                case 2 -> vo.setStatusText("异常");
+                case 3 -> vo.setStatusText("检测中");
                 default -> vo.setStatusText("未知");
             }
         }

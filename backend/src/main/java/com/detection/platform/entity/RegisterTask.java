@@ -140,6 +140,11 @@ public class RegisterTask {
      * 代理池ID
      */
     private Long proxyPoolId;
+    
+    /**
+     * 代理分组名称（选择分组时使用）
+     */
+    private String proxyGroupName;
 
     /**
      * 并发数

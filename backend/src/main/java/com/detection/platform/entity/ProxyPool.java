@@ -65,6 +65,16 @@ public class ProxyPool implements Serializable {
     private String description;
 
     /**
+     * 国家
+     */
+    private String country;
+
+    /**
+     * 分组
+     */
+    private String groupName;
+
+    /**
      * 状态:1可用,2不可用,3未检测
      */
     private Integer status;

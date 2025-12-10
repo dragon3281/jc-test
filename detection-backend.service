@@ -1,0 +1,39 @@
+[Unit]
+Description=Detection Platform Backend Service
+After=network.target mysql.service redis.service rabbitmq.service
+Wants=mysql.service redis.service rabbitmq.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/jc-test/backend
+Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
+Environment="PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# 启动前清理
+ExecStartPre=/bin/sleep 5
+
+# 启动命令
+ExecStart=/usr/bin/java -jar \
+    -Xms512m \
+    -Xmx2048m \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    /root/jc-test/backend/target/detection-platform-1.0.0.jar \
+    --logging.file.name=/root/jc-test/logs/detection-platform.log \
+    --logging.level.root=INFO \
+    --logging.level.com.detection.platform=DEBUG
+
+# 停止超时时间
+TimeoutStopSec=30
+
+# 自动重启配置
+Restart=always
+RestartSec=10
+
+# 标准输出和错误日志
+StandardOutput=append:/root/jc-test/logs/backend-stdout.log
+StandardError=append:/root/jc-test/logs/backend-stderr.log
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,7 @@ backend/target/
 backend/*.jar
 frontend/dist/
 frontend/node_modules/
+node_modules/
 
 # 日志文件
 *.log
@@ -45,3 +46,9 @@ LJ-project/
 .qoder/
 backend/BOOT-INF/
 test/node_modules/
+
+# Playwright测试报告
+frontend/playwright-report/
+frontend/test-results/
+test-results/
+playwright-report/

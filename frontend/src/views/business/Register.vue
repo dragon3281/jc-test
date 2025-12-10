@@ -342,10 +342,29 @@
           <el-form-item label="使用代理">
             <el-switch v-model="registerForm.useProxy" />
           </el-form-item>
-          <el-form-item v-if="registerForm.useProxy" label="代理池" prop="proxyPoolId">
-            <el-select v-model="registerForm.proxyPoolId" placeholder="请选择代理池">
+          <el-form-item v-if="registerForm.useProxy" label="选择方式">
+            <el-radio-group v-model="proxySelectMode">
+              <el-radio label="pool">按代理节点</el-radio>
+              <el-radio label="group">按分组</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item v-if="registerForm.useProxy && proxySelectMode === 'pool'" label="代理池" prop="proxyPoolId">
+            <el-select v-model="registerForm.proxyPoolId" placeholder="请选择代理节点" clearable filterable style="width: 100%">
               <el-option v-for="item in proxyPools" :key="item.id" :label="item.poolName" :value="item.id" />
             </el-select>
+          </el-form-item>
+          <el-form-item v-if="registerForm.useProxy && proxySelectMode === 'group'" label="代理分组" prop="proxyGroupName">
+            <el-select 
+              v-model="registerForm.proxyGroupName" 
+              placeholder="请选择代理分组" 
+              clearable 
+              filterable 
+              style="width: 100%"
+              @change="handleGroupChange"
+            >
+              <el-option v-for="group in proxyGroups" :key="group.groupName" :label="`${group.groupName} (${group.nodeCount}个代理)`" :value="group.groupName" />
+            </el-select>
+            <div class="form-tip" v-if="registerForm.proxyGroupName">已选择分组 "{{ registerForm.proxyGroupName }}"，将使用分组中的所有代理节点</div>
           </el-form-item>
         </div>
       </el-form>
@@ -558,6 +577,7 @@ const registerForm = reactive({
   successMessage: '',
   useProxy: false,
   proxyPoolId: null,
+  proxyGroupName: '',  // 新增：代理分组名称
   concurrency: 5,
   needPhone: false,
   manualPhone: '',
@@ -578,6 +598,8 @@ const registerRules = {
 }
 
 const proxyPools = ref([])
+const proxyGroups = ref([])  // 新增：代理分组列表
+const proxySelectMode = ref('pool')  // 新增：选择模式，pool=按节点, group=按分组
 const registerResults = ref([])
 const showTemplateDialog = ref(false)
 const showDraftDialog = ref(false)
@@ -741,6 +763,31 @@ const fetchProxyPools = async () => {
     proxyPools.value = res.data || []
   } catch (error) {
     console.error('获取代理池失败', error)
+  }
+}
+
+// 新增：获取代理分组列表
+const fetchProxyGroups = async () => {
+  try {
+    const res = await request.get('/proxy/groups/detail')
+    proxyGroups.value = res.data || []
+    console.log('📊 [代理分组] 获取分组列表:', proxyGroups.value)
+  } catch (error) {
+    console.error('获取代理分组失败', error)
+    proxyGroups.value = []
+  }
+}
+
+// 新增：处理分组选择变化
+const handleGroupChange = (groupName) => {
+  console.log('🔍 [代理分组] 选中分组:', groupName)
+  if (groupName) {
+    // 清空之前选中的单个代理
+    registerForm.proxyPoolId = null
+    const selectedGroup = proxyGroups.value.find(g => g.groupName === groupName)
+    if (selectedGroup) {
+      console.log(`  └─ 分组信息: ${selectedGroup.nodeCount} 个代理节点`)
+    }
   }
 }
 
@@ -1083,6 +1130,7 @@ const loadFromAnalysisResult = async () => {
 onMounted(() => {
   fetchData()
   fetchProxyPools()
+  fetchProxyGroups()  // 新增：加载代理分组列表
   fetchTemplateList()
   fetchDraftList()
   loadFromAnalysisResult()

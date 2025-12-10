@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.detection.platform.common.exception.BusinessException;
 import com.detection.platform.dao.RegisterTaskMapper;
+import com.detection.platform.entity.ProxyPool;
 import com.detection.platform.entity.RegisterTask;
+import com.detection.platform.service.ProxyPoolService;
 import com.detection.platform.service.RegisterTaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
 
     private final RegisterTaskMapper registerTaskMapper;
     private final ObjectMapper objectMapper;
+    private final ProxyPoolService proxyPoolService;
     private final Map<Long, List<Map<String, Object>>> taskResultsStore = new ConcurrentHashMap<>();
 
     // 生成16位随机字符串
@@ -48,6 +51,17 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
             sb.append(chars.charAt(idx));
         }
         return sb.toString();
+    }
+    
+    // 获取代理类型名称
+    private String getProxyTypeName(Integer proxyType) {
+        if (proxyType == null) return "未知";
+        switch (proxyType) {
+            case 1: return "HTTP";
+            case 2: return "HTTPS";
+            case 3: return "SOCKS5";
+            default: return "未知(" + proxyType + ")";
+        }
     }
 
     // 生成首位非0的11位数字字符串
@@ -207,6 +221,7 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
         if (params.get("proxyPoolId") != null) {
             task.setProxyPoolId(Long.valueOf(params.get("proxyPoolId").toString()));
         }
+        task.setProxyGroupName((String) params.get("proxyGroupName"));
         task.setConcurrency((Integer) params.get("concurrency"));
         task.setAutoRetry((Boolean) params.get("autoRetry"));
         task.setRetryTimes((Integer) params.get("retryTimes"));
@@ -270,10 +285,22 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                 String userAgent = String.valueOf(ext.getOrDefault("userAgent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"));
                 String referer = String.valueOf(ext.getOrDefault("referer", task.getWebsiteUrl()));
 
-                OkHttpClient client = new OkHttpClient.Builder()
-                        .connectTimeout(10, TimeUnit.SECONDS)
-                        .readTimeout(15, TimeUnit.SECONDS)
-                        .build();
+                // 获取代理池列表（支持按分组或单个节点）
+                List<ProxyPool> proxyPools = new ArrayList<>();
+                if (task.getUseProxy() != null && task.getUseProxy()) {
+                    if (task.getProxyGroupName() != null && !task.getProxyGroupName().isEmpty()) {
+                        // 按分组获取代理
+                        proxyPools = proxyPoolService.listProxyPoolsByGroup(task.getProxyGroupName());
+                        log.info("🔄 [代理分组] 任务使用分组 '{}' 的代理，共 {} 个可用节点", task.getProxyGroupName(), proxyPools.size());
+                    } else if (task.getProxyPoolId() != null) {
+                        // 单个代理节点
+                        ProxyPool pool = proxyPoolService.getById(task.getProxyPoolId());
+                        if (pool != null && pool.getStatus() == 1) {
+                            proxyPools.add(pool);
+                            log.info("🔄 [单一代理] 任务使用代理节点: {}", pool.getPoolName());
+                        }
+                    }
+                }
 
                 // 预估注册数量：如无数据源，按并发*10条示例
                 int totalCount = Optional.ofNullable(task.getAccountCount()).orElse(50);
@@ -289,6 +316,80 @@ public class RegisterTaskServiceImpl implements RegisterTaskService {
                     }
 
                     log.info("[Register] ========== 开始注册用户 #{} ===========", i + 1);
+                    
+                    // 为当前请求选择代理（轮询方式）
+                    OkHttpClient client;
+                    if (!proxyPools.isEmpty()) {
+                        ProxyPool selectedProxy = proxyPools.get(i % proxyPools.size());
+                        log.info("🌐 [代理轮询] 当前请求使用代理: {} ({}:{}), 类型: {}", 
+                                selectedProxy.getPoolName(), 
+                                selectedProxy.getProxyIp(), 
+                                selectedProxy.getProxyPort(),
+                                getProxyTypeName(selectedProxy.getProxyType()));
+                        
+                        // 根据代理类型创建代理对象 (1=HTTP, 2=HTTPS, 3=SOCKS5)
+                        java.net.Proxy.Type proxyType;
+                        if (selectedProxy.getProxyType() == 3) {
+                            proxyType = java.net.Proxy.Type.SOCKS;
+                        } else {
+                            // HTTP和HTTPS都使用HTTP类型的代理
+                            proxyType = java.net.Proxy.Type.HTTP;
+                        }
+                        
+                        java.net.Proxy proxy = new java.net.Proxy(proxyType, 
+                                new java.net.InetSocketAddress(selectedProxy.getProxyIp(), selectedProxy.getProxyPort()));
+                        
+                        // 处理代理认证
+                        if (selectedProxy.getAuthType() == 1 && selectedProxy.getUsername() != null) {
+                            final String username = selectedProxy.getUsername();
+                            final String password = selectedProxy.getPassword();
+                            
+                            // SOCKS代理（SOCKS4/SOCKS5）使用系统级Authenticator
+                            if (selectedProxy.getProxyType() == 3) {
+                                java.net.Authenticator.setDefault(new java.net.Authenticator() {
+                                    @Override
+                                    protected java.net.PasswordAuthentication getPasswordAuthentication() {
+                                        if (getRequestorType() == RequestorType.PROXY) {
+                                            return new java.net.PasswordAuthentication(username, password.toCharArray());
+                                        }
+                                        return null;
+                                    }
+                                });
+                                log.info("🔐 [代理认证] SOCKS5 - 用户名: {}", username);
+                            }
+                        }
+                        
+                        // 创建带代理的HTTP客户端
+                        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
+                                .connectTimeout(10, TimeUnit.SECONDS)
+                                .readTimeout(15, TimeUnit.SECONDS)
+                                .proxy(proxy);
+                        
+                        // HTTP/HTTPS代理使用proxyAuthenticator（基于Basic认证）
+                        if (selectedProxy.getAuthType() == 1 && selectedProxy.getUsername() != null 
+                                && selectedProxy.getProxyType() != 3) {
+                            final String username = selectedProxy.getUsername();
+                            final String password = selectedProxy.getPassword();
+                            clientBuilder.proxyAuthenticator((route, response) -> {
+                                String credential = okhttp3.Credentials.basic(username, password);
+                                return response.request().newBuilder()
+                                        .header("Proxy-Authorization", credential)
+                                        .build();
+                            });
+                            log.info("🔐 [代理认证] {} - 用户名: {}", 
+                                    getProxyTypeName(selectedProxy.getProxyType()), username);
+                        }
+                        
+                        client = clientBuilder.build();
+                    } else {
+                        // 未启用代理或无可用代理
+                        client = new OkHttpClient.Builder()
+                                .connectTimeout(10, TimeUnit.SECONDS)
+                                .readTimeout(15, TimeUnit.SECONDS)
+                                .build();
+                        log.info("🚫 [直连模式] 未使用代理，直接访问目标网站");
+                    }
+                    
                     String rnd = rndString();
                     log.info("[Register] 原始随机字符串 rnd: {}", rnd);
                     log.info("[Register] 反转后 reversedRnd: {}", new StringBuilder(rnd).reverse().toString());

@@ -47,4 +47,14 @@ public interface ProxyPoolService extends IService<ProxyPool> {
      * 刷新代理池统计信息
      */
     Boolean refreshPoolStats(Long poolId);
+    
+    /**
+     * 检测代理池连接（实际网络请求）
+     */
+    void checkProxyPool(Long poolId);
+    
+    /**
+     * 根据分组名获取代理池列表（可用状态）
+     */
+    List<ProxyPool> listProxyPoolsByGroup(String groupName);
 }

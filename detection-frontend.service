@@ -1,0 +1,33 @@
+[Unit]
+Description=Detection Platform Frontend Service
+After=network.target detection-backend.service
+Wants=detection-backend.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/jc-test/frontend
+
+# 环境变量
+Environment="NODE_ENV=production"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# 启动前确保依赖已安装
+ExecStartPre=/bin/bash -c 'test -d node_modules || npm install'
+
+# 启动命令
+ExecStart=/usr/bin/npm run dev
+
+# 停止超时时间
+TimeoutStopSec=15
+
+# 自动重启配置
+Restart=always
+RestartSec=10
+
+# 标准输出和错误日志
+StandardOutput=append:/root/jc-test/logs/frontend-stdout.log
+StandardError=append:/root/jc-test/logs/frontend-stderr.log
+
+[Install]
+WantedBy=multi-user.target
